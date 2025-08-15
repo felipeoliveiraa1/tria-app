@@ -116,8 +116,21 @@ export const useRecordingStore = create<RecordingState>()(
             })
             
             // Converter áudio para base64 para envio
-            const arrayBuffer = await audioBlob.arrayBuffer()
-            const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
+            const base64Audio = await new Promise<string>((resolve, reject) => {
+              try {
+                const reader = new FileReader()
+                reader.onload = () => {
+                  const result = reader.result as string
+                  // Remover prefixo data:mime;base64,
+                  const base64 = result.split(',')[1] || ''
+                  resolve(base64)
+                }
+                reader.onerror = (e) => reject(e)
+                reader.readAsDataURL(audioBlob)
+              } catch (e) {
+                reject(e)
+              }
+            })
             console.log('🔊 Store: Áudio convertido para base64, tamanho:', base64Audio.length)
             
             // 1. Atualizar consulta com duração e status COMPLETED
@@ -152,15 +165,15 @@ export const useRecordingStore = create<RecordingState>()(
               },
               body: JSON.stringify({
                 consultation_id: state.consultationId,
-                filename: `consulta-${state.consultationId}.wav`,
-                mime_type: 'audio/wav',
-                size: audioBlob.size || 1000, // Tamanho mínimo se o Blob estiver vazio
+                filename: `consulta-${state.consultationId}.webm`,
+                mime_type: 'audio/webm',
+                size: audioBlob.size || 1000,
                 duration: state.elapsed,
-                storage_path: `consultations/${state.consultationId}/audio.wav`,
+                storage_path: `consultations/${state.consultationId}/audio.webm`,
                 storage_bucket: 'audio-files',
                 is_processed: true,
                 processing_status: 'completed',
-                audio_data: base64Audio || 'dGVzdCBhdWRpbyBkYXRh', // Dados de teste se o Blob estiver vazio
+                audio_data: base64Audio || 'dGVzdCBhdWRpbyBkYXRh',
                 original_blob_size: audioBlob.size || 1000
               })
             })
