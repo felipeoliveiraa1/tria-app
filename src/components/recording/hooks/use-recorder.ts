@@ -21,7 +21,7 @@ export const useRecorder = () => {
   
   const audioContextRef = useRef<AudioContext | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
-  const dataArrayRef = useRef<Uint8Array | null>(null)
+  const dataArrayRef = useRef<any>(null)
 
   const {
     patientId,
@@ -44,9 +44,10 @@ export const useRecorder = () => {
       
       const updateLevel = () => {
         if (analyserRef.current && dataArrayRef.current && isRecording) {
+          // @ts-ignore Compatibilidade de tipos do Web Audio API no TS atual
           analyserRef.current.getByteFrequencyData(dataArrayRef.current)
           
-          const average = dataArrayRef.current.reduce((a, b) => a + b) / bufferLength
+          const average = (dataArrayRef.current as Uint8Array).reduce((a: number, b: number) => a + b, 0) / bufferLength
           const level = (average / 255) * 100
           
           updateAudioLevel(level)

@@ -13,7 +13,6 @@ import {
   RefreshCw,
   Table,
   Columns,
-  Data,
   Link,
   Settings
 } from "lucide-react"
@@ -197,7 +196,7 @@ export default function ValidateDatabasePage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <Data className="h-5 w-5" />
+                  <Database className="h-5 w-5" />
                   <span>Estatísticas</span>
                 </CardTitle>
               </CardHeader>
@@ -296,7 +295,7 @@ export default function ValidateDatabasePage() {
               <Card key={tableName}>
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
-                    <Data className="h-5 w-5" />
+                    <Database className="h-5 w-5" />
                     <span className="capitalize">{tableName.replace('_', ' ')} - Dados de Exemplo</span>
                   </CardTitle>
                 </CardHeader>
@@ -317,7 +316,7 @@ export default function ValidateDatabasePage() {
             {Object.keys(validationResult.sampleData).length === 0 && (
               <Card>
                 <CardContent className="text-center py-8">
-                  <Data className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <Database className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                   <p className="text-muted-foreground">Nenhum dado de exemplo disponível</p>
                 </CardContent>
               </Card>

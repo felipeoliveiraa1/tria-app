@@ -6,6 +6,7 @@
   :root {
     --background: #ffffff;
     --foreground: #000000;
+    --foreground-secondary: #6b7280; /* gray-500 */
     --card: #ffffff;
     --card-foreground: #000000;
     --popover: #ffffff;
@@ -29,6 +30,7 @@
   .dark {
     --background: #000000;
     --foreground: #ffffff;
+    --foreground-secondary: #9ca3af; /* gray-400 */
     --card: #000000;
     --card-foreground: #ffffff;
     --popover: #000000;

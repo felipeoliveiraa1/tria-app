@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
 // Função para criar cliente Supabase com fallback
 const createSupabaseClient = () => {
@@ -20,12 +20,11 @@ const createSupabaseClient = () => {
   }
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: Request) {
   try {
-    const { id } = params
+    const url = new URL(request.url)
+    const segments = url.pathname.split('/')
+    const id = segments[segments.length - 1]
 
     if (!id) {
       return NextResponse.json(
@@ -37,7 +36,6 @@ export async function GET(
     const supabase = createSupabaseClient()
     
     if (supabase) {
-      // Tentar usar Supabase
       try {
         const { data: transcription, error } = await supabase
           .from('transcriptions')
@@ -56,17 +54,16 @@ export async function GET(
         })
       } catch (supabaseError) {
         console.warn('Falha no Supabase, usando modo mock:', supabaseError)
-        // Continuar para o modo mock
       }
     }
 
-    // Modo mock - retornar transcrição simulada
+    // Modo mock
     const mockTranscription = {
       id: `mock-transcription-${id}`,
       consultation_id: id,
-      raw_text: "Esta é uma transcrição simulada da consulta médica. Em um ambiente de produção, este texto seria gerado pela API da OpenAI usando o modelo Whisper-1.",
-      summary: "Transcrição simulada da consulta médica",
-      key_points: ["Consulta médica", "Transcrição simulada"],
+      raw_text: 'Esta é uma transcrição simulada da consulta médica. Em um ambiente de produção, este texto seria gerado pela API da OpenAI usando o modelo Whisper-1.',
+      summary: 'Transcrição simulada da consulta médica',
+      key_points: ['Consulta médica', 'Transcrição simulada'],
       diagnosis: null,
       treatment: null,
       observations: null,

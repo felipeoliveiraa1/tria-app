@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
 // Função para criar cliente Supabase com fallback
 const createSupabaseClient = () => {
@@ -20,12 +20,11 @@ const createSupabaseClient = () => {
   }
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: Request) {
   try {
-    const { id } = params
+    const url = new URL(request.url)
+    const segments = url.pathname.split('/')
+    const id = segments[segments.length - 1]
 
     if (!id) {
       return NextResponse.json(
@@ -37,7 +36,6 @@ export async function GET(
     const supabase = createSupabaseClient()
     
     if (supabase) {
-      // Tentar usar Supabase
       try {
         const { data: audioFile, error } = await supabase
           .from('audio_files')
@@ -56,7 +54,6 @@ export async function GET(
         })
       } catch (supabaseError) {
         console.warn('Falha no Supabase, usando modo mock:', supabaseError)
-        // Continuar para o modo mock
       }
     }
 
@@ -67,8 +64,8 @@ export async function GET(
       filename: `consulta-${id}.webm`,
       original_name: `consulta-${id}.webm`,
       mime_type: 'audio/webm',
-      size: 1024 * 1024 * 5, // 5MB simulado
-      duration: 300, // 5 minutos simulado
+      size: 1024 * 1024 * 5,
+      duration: 300,
       storage_path: `consultations/${id}/audio.webm`,
       uploaded_at: new Date().toISOString()
     }
