@@ -43,23 +43,10 @@ export default function RecordingPage() {
   // Definir consultationId no store quando a página carregar
   useEffect(() => {
     if (consultationId && consultationId !== storeConsultationId) {
-      console.log('🎯 Página: Definindo consultationId no store:', consultationId)
+      console.log('Definindo consultationId no store:', consultationId)
       setConsultationId(consultationId)
     }
   }, [consultationId, storeConsultationId, setConsultationId])
-
-  // Remover conexão automática do STT - deixar que o useRecorder gerencie
-  // useEffect(() => {
-  //   if (consultationId && isSupported) {
-  //     console.log('🎤 Página: Conectando STT automaticamente...')
-  //     // Pequeno delay para garantir que tudo esteja carregado
-  //     const timer = setTimeout(() => {
-  //       connectSTT()
-  //     }, 1000)
-      
-  //     return () => clearTimeout(timer)
-  //   }
-  // }, [consultationId, isSupported, connectSTT])
 
   // Carregar dados da consulta
   useEffect(() => {
@@ -118,6 +105,13 @@ export default function RecordingPage() {
 
     loadConsultation()
   }, [consultationId])
+
+  // Conectar ao STT quando iniciar gravação
+  useEffect(() => {
+    if (status === 'recording' && isSupported) {
+      connectSTT()
+    }
+  }, [status, connectSTT, isSupported])
 
   // Limpar estado ao sair da página
   useEffect(() => {

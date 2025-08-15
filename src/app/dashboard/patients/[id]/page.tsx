@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Download, FileText, User, Calendar, Clock, Mic, Headphones, FileAudio, Activity, Heart, Pill, Stethoscope, CheckCircle, AlertCircle, Loader2, Pause, Play } from "lucide-react"
+import { ArrowLeft, Download, FileText, User, Calendar, Clock, Mic, Headphones, FileAudio, Activity, Heart, Pill, Stethoscope, CheckCircle, AlertCircle } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 
 interface Consultation {
@@ -53,7 +53,6 @@ interface AudioFile {
   is_processed: boolean
   processing_status: string
   uploaded_at: string
-  audio_data?: string // Adicionado para armazenar o base64
 }
 
 export default function PatientDataPage() {
@@ -67,93 +66,6 @@ export default function PatientDataPage() {
   const [audioFile, setAudioFile] = useState<AudioFile | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null)
-
-  // Estado para controlar carregamento do áudio
-  const [audioLoading, setAudioLoading] = useState(false)
-  const [audioReady, setAudioReady] = useState(false)
-  const [audioError, setAudioError] = useState<string | null>(null)
-
-  // Função para aguardar o áudio estar pronto
-  const waitForAudioReady = (audio: HTMLAudioElement, timeoutMs: number = 10000): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      const startTime = Date.now()
-      
-      // Função para verificar se está pronto
-      const checkReady = () => {
-        const elapsed = Date.now() - startTime
-        
-        // Timeout
-        if (elapsed > timeoutMs) {
-          reject(new Error(`Timeout: Áudio não ficou pronto em ${timeoutMs}ms`))
-          return
-        }
-        
-        // Verificar se está pronto
-        if (audio.readyState >= 3 && audio.duration > 0 && !isNaN(audio.duration)) {
-          console.log('✅ Áudio pronto detectado:', {
-            readyState: audio.readyState,
-            duration: audio.duration,
-            elapsed: elapsed + 'ms'
-          })
-          resolve()
-          return
-        }
-        
-        // Continuar verificando
-        setTimeout(checkReady, 100)
-      }
-      
-      // Iniciar verificação
-      checkReady()
-    })
-  }
-
-  // Função para carregar áudio de forma robusta
-  const loadAudioRobustly = async (audio: HTMLAudioElement): Promise<boolean> => {
-    try {
-      setAudioLoading(true)
-      setAudioError(null)
-      
-      console.log('🔄 Iniciando carregamento robusto do áudio...')
-      
-      // Configurar o áudio
-      audio.preload = 'auto'
-      audio.load()
-      
-      // Aguardar o áudio estar pronto
-      await waitForAudioReady(audio)
-      
-      // Verificações finais
-      if (audio.error) {
-        throw new Error(`Erro no elemento de áudio: ${audio.error.message}`)
-      }
-      
-      if (audio.duration === 0 || isNaN(audio.duration)) {
-        throw new Error('Duração do áudio inválida após carregamento')
-      }
-      
-      if (audio.buffered.length === 0) {
-        throw new Error('Nenhum dado de áudio disponível para reprodução')
-      }
-      
-      console.log('✅ Áudio carregado com sucesso:', {
-        duration: audio.duration,
-        readyState: audio.readyState,
-        buffered: audio.buffered.length
-      })
-      
-      setAudioReady(true)
-      return true
-      
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
-      console.error('❌ Erro ao carregar áudio:', error)
-      setAudioError(errorMessage)
-      return false
-    } finally {
-      setAudioLoading(false)
-    }
-  }
 
   // Carregar dados da consulta
   useEffect(() => {
@@ -234,15 +146,13 @@ export default function PatientDataPage() {
         // Buscar transcrição usando a API correta
         try {
           console.log('🔄 Buscando transcrição para consulta:', consultationId)
-          // Buscar transcrição específica da consulta
           const transcriptionResponse = await fetch(`/api/transcriptions?consultation_id=${consultationId}`)
           if (transcriptionResponse.ok) {
             const transcriptionData = await transcriptionResponse.json()
             console.log('✅ Dados da transcrição recebidos:', transcriptionData)
-            
             if (transcriptionData.transcriptions && transcriptionData.transcriptions.length > 0) {
-              console.log('✅ Transcrição encontrada para a consulta:', transcriptionData.transcriptions[0])
-              setTranscription(transcriptionData.transcriptions[0])
+              console.log('✅ Transcrição encontrada:', transcriptionData.transcriptions[0])
+              setTranscription(transcriptionData.transcriptions[0]) // Pegar a primeira transcrição
             } else {
               console.log('⚠️ Nenhuma transcrição encontrada para esta consulta')
             }
@@ -255,21 +165,15 @@ export default function PatientDataPage() {
 
         // Buscar arquivo de áudio usando a API correta
         try {
-          console.log('🔄 Buscando arquivo de áudio para consulta:', consultationId)
-          // Buscar arquivo de áudio específico da consulta
           const audioResponse = await fetch(`/api/audio-files?consultation_id=${consultationId}`)
           if (audioResponse.ok) {
             const audioData = await audioResponse.json()
             console.log('Dados do áudio:', audioData)
-            
             if (audioData.audioFiles && audioData.audioFiles.length > 0) {
-              console.log('✅ Arquivo de áudio encontrado para a consulta:', audioData.audioFiles[0])
-              setAudioFile(audioData.audioFiles[0])
-            } else {
-              console.log('⚠️ Nenhum arquivo de áudio encontrado para esta consulta')
+              setAudioFile(audioData.audioFiles[0]) // Pegar o primeiro arquivo de áudio
             }
           } else {
-            console.log('❌ Erro ao buscar arquivo de áudio:', audioResponse.status)
+            console.log('Arquivo de áudio não encontrado para consulta:', consultationId)
           }
         } catch (error) {
           console.log('Erro ao buscar arquivo de áudio:', error)
@@ -302,68 +206,20 @@ export default function PatientDataPage() {
     if (audioElement) {
       try {
         if (isPlaying) {
-          console.log('⏸️ Pausando áudio...')
           audioElement.pause()
           setIsPlaying(false)
         } else {
-          console.log('▶️ Iniciando reprodução...')
-          
-          // Verificar se o áudio está pronto
-          if (audioElement.readyState >= 2) { // HAVE_CURRENT_DATA
-            console.log('✅ Áudio pronto para reprodução')
-            await audioElement.play()
-            setIsPlaying(true)
-            console.log('✅ Reprodução iniciada com sucesso')
-          } else {
-            console.log('⏳ Áudio ainda não está pronto, aguardando...')
-            toast({
-              title: "Aguarde",
-              description: "O áudio ainda está carregando. Tente novamente em alguns segundos.",
-              variant: "default"
-            })
-          }
+          await audioElement.play()
+          setIsPlaying(true)
         }
       } catch (error) {
-        console.error('❌ Erro ao controlar áudio:', error)
-        
-        // Tratar erros específicos
-        if (error instanceof Error) {
-          if (error.name === 'AbortError') {
-            toast({
-              title: "Reprodução interrompida",
-              description: "A reprodução foi interrompida. Tente novamente.",
-              variant: "destructive"
-            })
-          } else if (error.name === 'NotSupportedError') {
-            toast({
-              title: "Formato não suportado",
-              description: "O formato de áudio não é suportado pelo navegador.",
-              variant: "destructive"
-            })
-          } else {
-            toast({
-              title: "Erro ao reproduzir áudio",
-              description: `Erro: ${error.message}`,
-              variant: "destructive"
-            })
-          }
-        } else {
-          toast({
-            title: "Erro ao reproduzir áudio",
-            description: "Não foi possível reproduzir o arquivo de áudio.",
-            variant: "destructive"
-          })
-        }
-        
-        setIsPlaying(false)
+        console.error('Erro ao controlar áudio:', error)
+        toast({
+          title: "Erro ao reproduzir áudio",
+          description: "Não foi possível reproduzir o arquivo de áudio.",
+          variant: "destructive"
+        })
       }
-    } else {
-      console.warn('Nenhum elemento de áudio disponível')
-      toast({
-        title: "Áudio não disponível",
-        description: "O player de áudio não está configurado.",
-        variant: "destructive"
-      })
     }
   }
 
@@ -385,38 +241,158 @@ export default function PatientDataPage() {
     }
   }
 
-  // Carregar áudio quando audioFile mudar
+  // Configurar áudio quando audioFile mudar
   useEffect(() => {
-    if (!audioFile) {
-      console.log('❌ audioFile inválido ou sem URL válida:', audioFile)
-      return
-    }
-
-    console.log('🔄 AudioFile carregado:', {
-      id: audioFile.id,
-      filename: audioFile.filename,
-      size: audioFile.size,
-      mime_type: audioFile.mime_type,
-      file_url: audioFile.file_url,
-      storage_path: audioFile.storage_path
-    })
-
-    // Limpar estado anterior
-    setAudioElement(null)
-    setAudioReady(false)
-    setAudioError(null)
-    setIsPlaying(false)
-
-    // Se temos URL de áudio, marcar como pronto
-    if (audioFile.file_url || audioFile.storage_path) {
-      console.log('✅ URL de áudio disponível, marcando como pronto')
-      setAudioReady(true)
-      setAudioError(null)
+    console.log('🔄 useEffect do áudio executado, audioFile:', audioFile)
+    
+    if (audioFile && audioFile.file_url) {
+      console.log('🔍 Analisando URL do áudio:', audioFile.file_url)
+      console.log('🔍 Tipo da URL:', typeof audioFile.file_url)
+      console.log('🔍 URL começa com http?', audioFile.file_url.startsWith('http'))
+      console.log('🔍 URL contém supabase.co?', audioFile.file_url.includes('supabase.co'))
+      
+      // Verificar se é uma URL HTTP válida (simplificar validação)
+      if (audioFile.file_url.startsWith('http')) {
+        console.log('✅ URL válida detectada, criando elemento de áudio...')
+        
+        try {
+          const audio = new Audio(audioFile.file_url)
+          console.log('✅ Elemento de áudio criado com sucesso')
+          
+          audio.addEventListener('loadstart', () => {
+            console.log('🔄 Áudio iniciando carregamento...')
+          })
+          
+          audio.addEventListener('canplay', () => {
+            console.log('✅ Áudio pronto para reprodução')
+            toast({
+              title: "Áudio carregado!",
+              description: "Clique em reproduzir para ouvir o áudio.",
+            })
+          })
+          
+          audio.addEventListener('play', () => {
+            console.log('▶️ Áudio iniciou reprodução')
+            setIsPlaying(true)
+          })
+          
+          audio.addEventListener('pause', () => {
+            console.log('⏸️ Áudio pausado')
+            setIsPlaying(false)
+          })
+          
+          audio.addEventListener('ended', () => {
+            console.log('⏹️ Áudio terminou')
+            setIsPlaying(false)
+          })
+          
+          audio.addEventListener('error', (e) => {
+            console.error('❌ Erro ao carregar áudio:', e)
+            console.error('❌ Tipo do evento de erro:', typeof e)
+            console.error('❌ Evento de erro completo:', e)
+            
+            // Verificar se o elemento de áudio tem informações de erro
+            if (audio && audio.error && audio.error.code !== undefined) {
+              console.error('✅ Detalhes do erro disponíveis:', {
+                code: audio.error.code,
+                message: audio.error.message || 'Sem mensagem',
+                MEDIA_ERR_ABORTED: audio.error.MEDIA_ERR_ABORTED,
+                MEDIA_ERR_NETWORK: audio.error.MEDIA_ERR_NETWORK,
+                MEDIA_ERR_DECODE: audio.error.MEDIA_ERR_DECODE,
+                MEDIA_ERR_SRC_NOT_SUPPORTED: audio.error.MEDIA_ERR_SRC_NOT_SUPPORTED
+              })
+              
+              let errorMessage = 'Erro desconhecido'
+              switch (audio.error.code) {
+                case audio.error.MEDIA_ERR_ABORTED:
+                  errorMessage = 'Carregamento abortado pelo usuário'
+                  break
+                case audio.error.MEDIA_ERR_NETWORK:
+                  errorMessage = 'Erro de rede ao carregar o áudio'
+                  break
+                case audio.error.MEDIA_ERR_DECODE:
+                  errorMessage = 'Erro ao decodificar o arquivo de áudio'
+                  break
+                case audio.error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+                  errorMessage = 'Formato de áudio não suportado'
+                  break
+                default:
+                  errorMessage = `Erro ${audio.error.code}: ${audio.error.message || 'Sem mensagem'}`
+              }
+              
+              toast({
+                title: "Erro ao carregar áudio",
+                description: errorMessage,
+                variant: "destructive"
+              })
+            } else {
+              console.error('⚠️ Erro de áudio sem detalhes disponíveis')
+              console.error('⚠️ audio.error:', audio.error)
+              console.error('⚠️ audio.error.code:', audio.error?.code)
+              
+              // Tentar obter mais informações do evento
+              if (e && e.target && (e.target as HTMLAudioElement).error) {
+                const audioTarget = e.target as HTMLAudioElement
+                console.error('✅ Erro encontrado no target:', audioTarget.error)
+                if (audioTarget.error) {
+                  toast({
+                    title: "Erro ao carregar áudio",
+                    description: `Erro: ${audioTarget.error.message || 'Formato não suportado'}`,
+                    variant: "destructive"
+                  })
+                }
+              } else {
+                toast({
+                  title: "Erro ao carregar áudio",
+                  description: "Não foi possível carregar o arquivo de áudio. Verifique se o formato é suportado.",
+                  variant: "destructive"
+                })
+              }
+            }
+          })
+          
+          // Testar se o áudio pode ser carregado
+          console.log('🔄 Tentando carregar o áudio...')
+          audio.load()
+          
+          setAudioElement(audio)
+          console.log('✅ Elemento de áudio configurado e salvo no estado')
+          
+          // Cleanup
+          return () => {
+            console.log('🧹 Limpando elemento de áudio')
+            audio.pause()
+            audio.removeEventListener('loadstart', () => {})
+            audio.removeEventListener('canplay', () => {})
+            audio.removeEventListener('play', () => {})
+            audio.removeEventListener('pause', () => {})
+            audio.removeEventListener('ended', () => {})
+            audio.removeEventListener('error', () => {})
+          }
+        } catch (error) {
+          console.error('❌ Erro ao criar elemento de áudio:', error)
+          setAudioElement(null)
+          toast({
+            title: "Erro ao criar player de áudio",
+            description: "Não foi possível criar o player de áudio.",
+            variant: "destructive"
+          })
+        }
+      } else {
+        console.log('⚠️ URL inválida (não começa com http):', audioFile.file_url)
+        setAudioElement(null)
+        
+        // Mostrar toast informativo
+        toast({
+          title: "URL de áudio inválida",
+          description: "O arquivo de áudio não possui uma URL válida para reprodução.",
+          variant: "destructive"
+        })
+      }
     } else {
-      console.log('⚠️ Nenhuma URL de áudio disponível')
-      setAudioError('Nenhuma URL de áudio disponível')
+      console.log('❌ audioFile inválido ou sem URL:', audioFile)
+      setAudioElement(null)
     }
-
   }, [audioFile])
 
   const formatDuration = (seconds: number | null) => {
@@ -786,49 +762,45 @@ export default function PatientDataPage() {
                 <FileAudio className="h-5 w-5" />
                 <span>Gravação da Consulta</span>
                 <div className="ml-auto flex space-x-2">
-                  {/* Controles de áudio */}
-                  <div className="flex items-center gap-2">
-                    <Button
-                      onClick={toggleAudio}
-                      disabled={!audioElement || audioLoading}
-                      variant={isPlaying ? "secondary" : "default"}
-                      size="sm"
-                    >
-                      {audioLoading ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          Carregando...
-                        </>
-                      ) : isPlaying ? (
-                        <>
-                          <Pause className="h-4 w-4 mr-2" />
-                          Pausar
-                        </>
-                      ) : (
-                        <>
-                          <Play className="h-4 w-4 mr-2" />
-                          Reproduzir
-                        </>
-                      )}
-                    </Button>
-                    
-                    {audioElement && (
-                      <div className="text-sm text-muted-foreground">
-                        {audioLoading && "🔄 Carregando..."}
-                        {audioReady && !audioLoading && "✅ Pronto"}
-                        {audioError && `❌ ${audioError}`}
-                        {!audioReady && !audioLoading && !audioError && "⏳ Aguardando..."}
-                      </div>
-                    )}
-                  </div>
+                  {audioElement && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={toggleAudio}
+                        className="flex items-center space-x-2"
+                      >
+                        {isPlaying ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                            <span>Pausar</span>
+                          </>
+                        ) : (
+                          <>
+                            <div className="w-0 h-0 border-l-[8px] border-l-current border-y-[6px] border-y-transparent ml-1" />
+                            <span>Reproduzir</span>
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={stopAudio}
+                        className="flex items-center space-x-2"
+                      >
+                        <div className="w-4 h-4 bg-current rounded-sm" />
+                        <span>Parar</span>
+                      </Button>
+                    </>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={stopAudio}
+                    onClick={handleDownloadAudio}
                     className="flex items-center space-x-2"
                   >
-                    <div className="w-4 h-4 bg-current rounded-sm" />
-                    <span>Parar</span>
+                    <Download className="h-4 w-4" />
+                    <span>Download</span>
                   </Button>
                 </div>
               </CardTitle>

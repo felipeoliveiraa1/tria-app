@@ -16,58 +16,51 @@ export function LiveTranscriptPanel({ className }: LiveTranscriptPanelProps) {
     finalSegments, 
     status, 
     elapsed,
-    getTotalWords,
-    realtimeConnected
+    getTotalWords 
   } = useRecordingStore()
   
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const lastSegmentRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll para o último segmento
+  // Auto-scroll para o final
   useEffect(() => {
-    if (scrollAreaRef.current && lastSegmentRef.current) {
-      lastSegmentRef.current.scrollIntoView({ behavior: 'smooth' })
+    if (scrollAreaRef.current && (partialText || finalSegments.length > 0)) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight
     }
   }, [partialText, finalSegments])
 
-  // Logs de debug para verificar estado
-  useEffect(() => {
-    console.log('📝 LiveTranscriptPanel - Estado atualizado:', {
-      partialText,
-      finalSegmentsCount: finalSegments.length,
-      status,
-      elapsed,
-      realtimeConnected,
-      totalWords: getTotalWords()
-    })
-  }, [partialText, finalSegments.length, status, elapsed, realtimeConnected, getTotalWords])
-
   const formatTimestamp = (ms: number) => {
     const seconds = Math.floor(ms / 1000)
-    const minutes = Math.floor(seconds / 60)
-    const remainingSeconds = seconds % 60
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
   const copyAllText = async () => {
-    const allText = finalSegments.map(s => s.text).join(' ')
-    try {
-      await navigator.clipboard.writeText(allText)
-      console.log('✅ Texto copiado para a área de transferência')
-    } catch (error) {
-      console.error('❌ Erro ao copiar texto:', error)
+    const allText = finalSegments.map(s => s.text).join('\n\n')
+    if (allText) {
+      try {
+        await navigator.clipboard.writeText(allText)
+        console.log('Transcrição copiada para a área de transferência')
+      } catch (error) {
+        console.error('Erro ao copiar texto:', error)
+      }
     }
   }
 
   const downloadTranscript = () => {
-    const allText = finalSegments.map(s => s.text).join('\n')
-    const blob = new Blob([allText], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `transcricao-${new Date().toISOString().split('T')[0]}.txt`
-    a.click()
-    URL.revokeObjectURL(url)
+    const allText = finalSegments.map(s => s.text).join('\n\n')
+    if (allText) {
+      const blob = new Blob([allText], { type: 'text/plain;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `transcricao-${new Date().toISOString().split('T')[0]}.txt`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    }
   }
 
   const hasContent = finalSegments.length > 0 || partialText
@@ -84,11 +77,21 @@ export function LiveTranscriptPanel({ className }: LiveTranscriptPanelProps) {
           <div className="flex items-center space-x-2">
             {hasContent && (
               <>
-                <Button variant="outline" size="sm" onClick={copyAllText} className="h-8">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyAllText}
+                  className="h-8"
+                >
                   <Copy className="h-3 w-3 mr-1" />
                   Copiar
                 </Button>
-                <Button variant="outline" size="sm" onClick={downloadTranscript} className="h-8">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadTranscript}
+                  className="h-8"
+                >
                   <Download className="h-3 w-3 mr-1" />
                   Download
                 </Button>
@@ -98,15 +101,6 @@ export function LiveTranscriptPanel({ className }: LiveTranscriptPanelProps) {
             <Badge variant="outline" className="text-xs">
               {getTotalWords()} palavras
             </Badge>
-            
-            {/* Indicador de status do STT mais visível */}
-            <Badge 
-              variant={realtimeConnected ? "default" : "secondary"} 
-              className={`text-xs px-3 py-1 ${realtimeConnected ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-700'}`}
-            >
-              <Mic className="h-3 w-3 mr-1" />
-              {realtimeConnected ? "STT ATIVO" : "STT INATIVO"}
-            </Badge>
           </div>
         </div>
       </CardHeader>
@@ -114,60 +108,68 @@ export function LiveTranscriptPanel({ className }: LiveTranscriptPanelProps) {
       <CardContent className="h-full p-0">
         <ScrollArea className="h-full px-6 pb-6" ref={scrollAreaRef}>
           {!hasContent ? (
-            <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-              <Mic className="h-12 w-12 mb-4 opacity-50" />
-              <p className="text-lg font-medium mb-2">
-                {realtimeConnected ? 'Fale algo para começar a transcrição...' : 'STT não está conectado'}
-              </p>
-              <p className="text-sm">
-                {realtimeConnected 
-                  ? 'A transcrição em tempo real aparecerá aqui' 
-                  : 'Clique em "Iniciar Gravação" para conectar o STT'
-                }
-              </p>
+            // Estado vazio
+            <div className="flex flex-col items-center justify-center h-64 text-center space-y-4">
+              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+                <Mic className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-medium text-muted-foreground">
+                  Nenhuma Transcrição Ainda
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  Você deve ter pelo menos 1 minuto de gravação ou 5 segmentos para ver a transcrição aqui.
+                </p>
+              </div>
             </div>
           ) : (
+            // Conteúdo da transcrição
             <div className="space-y-4">
+              {/* Segmentos finais */}
               {finalSegments.map((segment, index) => (
                 <div
                   key={segment.id}
                   ref={index === finalSegments.length - 1 ? lastSegmentRef : null}
-                  className="flex items-start space-x-3"
+                  className="space-y-2"
                 >
-                  <Badge variant="outline" className="text-xs mt-1 flex-shrink-0">
-                    <Clock className="h-3 w-3 mr-1" />
-                    {formatTimestamp(segment.startMs)}
-                  </Badge>
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">
-                      {segment.text}
-                    </p>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <span className="text-xs text-muted-foreground">
-                        {segment.timestamp.toLocaleTimeString()}
-                      </span>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Segmento {index + 1}</span>
+                    <div className="flex items-center space-x-2">
+                      <Clock className="h-3 w-3" />
+                      <span>{formatTimestamp(segment.startMs)}</span>
                       {segment.confidence && (
-                        <span className="text-xs text-muted-foreground">
-                          Confiança: {Math.round(segment.confidence * 100)}%
-                        </span>
+                        <Badge variant="outline" className="text-xs">
+                          {(segment.confidence * 100).toFixed(0)}%
+                        </Badge>
                       )}
                     </div>
+                  </div>
+                  
+                  <div className="bg-muted/50 rounded-lg p-3 border-l-4 border-l-primary">
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                      {segment.text}
+                    </p>
                   </div>
                 </div>
               ))}
               
+              {/* Texto parcial (em tempo real) */}
               {partialText && (
-                <div className="flex items-start space-x-3">
-                  <Badge variant="outline" className="text-xs mt-1 flex-shrink-0">
-                    <Mic className="h-3 w-3 mr-1" />
-                    Ao vivo
-                  </Badge>
-                  <div className="flex-1">
-                    <p className="text-sm text-blue-600 font-medium">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Falando agora...</span>
+                    <div className="flex items-center space-x-2">
+                      <Clock className="h-3 w-3" />
+                      <span>{formatTimestamp(elapsed)}</span>
+                      <Badge variant="secondary" className="text-xs">
+                        Em tempo real
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-primary/10 rounded-lg p-3 border-l-4 border-l-primary/50">
+                    <p className="text-sm leading-relaxed text-primary/80 italic">
                       {partialText}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Transcrição em tempo real...
                     </p>
                   </div>
                 </div>

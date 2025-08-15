@@ -1,0 +1,340 @@
+{
+  "restoredCount": 67,
+  "restored": [
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/CONFIGURATION.md",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-156b8ba0/cj0N.md",
+      "mtime": "2025-08-14T15:03:13.712Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/ENVIRONMENT_SETUP.md",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-1663563b/sFaO.md",
+      "mtime": "2025-08-14T14:41:10.640Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/SUPABASE_SETUP.sql",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-19e0382d/Z3mT.sql",
+      "mtime": "2025-08-14T14:36:47.788Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/api/patients/route.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-1cc66e7a/nRD0.ts",
+      "mtime": "2025-08-14T17:55:43.565Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/globals.css",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-21012525/CQE5.css",
+      "mtime": "2025-08-13T12:43:38.369Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/auth/auth-code-error/page.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-228a3a07/XY44.tsx",
+      "mtime": "2025-08-14T19:03:05.487Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/components/recording/hooks/use-recorder.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-26bb4e91/fE78.ts",
+      "mtime": "2025-08-14T21:18:59.507Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/api/consultations/[id]/route.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-26d17618/Yp75.ts",
+      "mtime": "2025-08-14T20:11:48.664Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/components/recording/components/recording-layout.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-32ebd311/yEyw.tsx",
+      "mtime": "2025-08-13T15:16:04.794Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/MIGRATION_SCRIPT_EXISTING_FINAL_V4.sql",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-34ae39d7/eAw3.sql",
+      "mtime": "2025-08-14T16:11:55.799Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/MIGRATION_SCRIPT_EXISTING_FINAL_V3.sql",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-34bc5158/ZdL6.sql",
+      "mtime": "2025-08-14T16:09:34.165Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/MIGRATION_SCRIPT_EXISTING_FINAL_V2.sql",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-34ca68d9/vsws.sql",
+      "mtime": "2025-08-14T16:02:15.719Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/api/audio-files/by-consultation/[id]/route.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-356cf272/fbxW.ts",
+      "mtime": "2025-08-14T14:15:29.553Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/api/transcribe/route.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-3a150ec1/3m0z.ts",
+      "mtime": "2025-08-14T14:05:12.607Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/components/ui/scroll-area.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-3bf50f66/HuAW.tsx",
+      "mtime": "2025-08-13T15:18:02.783Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/api/test/route.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-4154cffe/Cech.ts",
+      "mtime": "2025-08-14T20:16:21.564Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/dashboard/patients/[id]/page.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-4419787a/JvCN.tsx",
+      "mtime": "2025-08-14T21:46:52.249Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/lib/mock-data.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-48ff03ba/gQbq.ts",
+      "mtime": "2025-08-14T18:34:22.846Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/lib/mock-db.json",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-4b1f7ea5/ltFU.json",
+      "mtime": "2025-08-14T18:34:20.471Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/api/patients/[id]/route.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-4d9a59f6/Wj4C.ts",
+      "mtime": "2025-08-14T17:17:16.569Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/login/page.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-4f18c076/hgga.tsx",
+      "mtime": "2025-08-13T14:36:59.581Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/layout.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-56894041/7SYL.tsx",
+      "mtime": "2025-08-13T14:36:59.027Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/MIGRATION_SCRIPT_EXISTING_FIXED.sql",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-5fe78d2e/juua.sql",
+      "mtime": "2025-08-14T15:11:30.920Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/page.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-619870dc/F6si.tsx",
+      "mtime": "2025-08-13T14:36:56.515Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/components/dashboard/dashboard-main.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-61e9af8b/O4xc.tsx",
+      "mtime": "2025-08-14T17:52:29.304Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/api/transcriptions/by-consultation/[id]/route.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-63f403b3/0ZEY.ts",
+      "mtime": "2025-08-14T14:15:11.320Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/components/dashboard/dashboard-content.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-668d70d/6ybq.tsx",
+      "mtime": "2025-08-14T17:38:24.467Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/components/recording/components/control-bar.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-6a06c430/NEyR.tsx",
+      "mtime": "2025-08-14T21:54:57.154Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/MIGRATION_SCRIPT_EXISTING.sql",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-6eef1343/ZmxC.sql",
+      "mtime": "2025-08-14T15:08:09.361Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/dashboard/validate-database/page.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-71897e64/R8AZ.tsx",
+      "mtime": "2025-08-14T14:56:14.084Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/MIGRATION_SCRIPT_EXISTING_FINAL.sql",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-7748842c/kq9z.sql",
+      "mtime": "2025-08-14T15:59:55.584Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/components/recording/store/recording-setup-store.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-789874ff/ih1y.ts",
+      "mtime": "2025-08-14T13:57:08.749Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/dashboard/appointments/[id]/view/page.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-7a25c6ce/xu0Y.tsx",
+      "mtime": "2025-08-14T21:03:04.520Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/api/validate-database/route.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-7b0a5fe0/gQjz.ts",
+      "mtime": "2025-08-14T14:55:27.217Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/components/dashboard/dashboard-sidebar.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-7b229aa/6L6h.tsx",
+      "mtime": "2025-08-13T16:37:29.666Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/dashboard/appointments/[id]/page.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/-d58bdd4/ZXoo.tsx",
+      "mtime": "2025-08-14T17:16:25.129Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/contexts/auth-context.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/10c19704/HQiw.tsx",
+      "mtime": "2025-08-14T20:11:48.558Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/hooks/use-data.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/120b01a2/m5qb.ts",
+      "mtime": "2025-08-14T18:36:36.949Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/nova-consulta/page.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/1270bd1d/3ylg.tsx",
+      "mtime": "2025-08-13T02:42:33.177Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/auth/callback/route.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/187f0dd1/UM9S.ts",
+      "mtime": "2025-08-14T19:03:02.799Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/components/recording/components/patient-context-panel.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/1b009fcb/LreC.tsx",
+      "mtime": "2025-08-14T16:24:00.531Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/api/consultations/route.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/230d3be8/f2PV.ts",
+      "mtime": "2025-08-14T20:27:03.217Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/dashboard/page.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/2c49bfbf/RF7Q.tsx",
+      "mtime": "2025-08-13T12:43:39.221Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/Requeriments.md",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/2c5f13c4/GQlh.md",
+      "mtime": "2025-08-14T13:51:47.506Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/components/patients/PatientsPage.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/3607af6c/6YeK.tsx",
+      "mtime": "2025-08-14T14:33:19.774Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/components/ui/button.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/37a2fb3b/LQst.tsx",
+      "mtime": "2025-08-13T12:43:39.616Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/api/audio-files/route.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/384639b2/Alwu.ts",
+      "mtime": "2025-08-14T21:40:17.379Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/dashboard/nova-consulta/page.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/38984278/PetO.tsx",
+      "mtime": "2025-08-14T20:11:48.612Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/.env.local",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/39441a2d/F4Zz.local",
+      "mtime": "2025-08-14T20:26:25.139Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/components/recording/components/live-transcript-panel.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/3d24741b/jef3.tsx",
+      "mtime": "2025-08-14T16:24:27.872Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/components/recording/store/recording-store.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/3d7cad71/AWAQ.ts",
+      "mtime": "2025-08-14T21:48:59.738Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/components/recording/hooks/use-autosave-context.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/421c6b9f/vn0Q.ts",
+      "mtime": "2025-08-14T16:23:35.904Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/components/ui/badge.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/55adef30/iviz.tsx",
+      "mtime": "2025-08-13T14:36:58.785Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/package.json",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/582d2cc1/Szu8.json",
+      "mtime": "2025-08-13T18:02:35.499Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/middleware.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/5908dadf/GiTS.ts",
+      "mtime": "2025-08-14T19:02:31.625Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/lib/supabase.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/631b5083/2ATj.ts",
+      "mtime": "2025-08-14T20:11:48.497Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/app/api/transcriptions/route.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/6407ca13/JQpO.ts",
+      "mtime": "2025-08-14T20:43:12.472Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/components/forms/login-form.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/65d21c50/D7KA.tsx",
+      "mtime": "2025-08-13T14:36:56.573Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/MIGRATION_SCRIPT_EXISTING_FIXED_V2.sql",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/681c5769/W18g.sql",
+      "mtime": "2025-08-14T15:22:05.794Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/components/ui/card.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/69801f99/cr9C.tsx",
+      "mtime": "2025-08-13T12:43:39.798Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/postcss.config.js",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/72e48819/Psz9.js",
+      "mtime": "2025-08-13T12:43:39.128Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/components/recording/hooks/use-realtime-stt.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/7c1aaa7c/jAQ7.ts",
+      "mtime": "2025-08-14T14:13:21.711Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/lib/utils.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/7d2b8a22/IaxX.ts",
+      "mtime": "2025-08-13T12:43:39.451Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/types/database.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/7e9d3c0/bTdH.ts",
+      "mtime": "2025-08-14T14:37:53.061Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/src/components/patients/PatientDetailsModal.tsx",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/cab5a57/TGYJ.tsx",
+      "mtime": "2025-08-14T16:34:16.168Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/tailwind.config.ts",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/dd6f106/PYlB.ts",
+      "mtime": "2025-08-13T14:36:55.557Z"
+    },
+    {
+      "originalPath": "/Users/felipeporto/Documents/tria-voa/tria-app/MIGRATION_SCRIPT.sql",
+      "blobPath": "/Users/felipeporto/Library/Application Support/Cursor/User/History/f7f658d/bC7n.sql",
+      "mtime": "2025-08-14T14:57:49.896Z"
+    }
+  ]
+}

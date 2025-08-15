@@ -217,30 +217,38 @@ export default function NovaConsultaPage() {
   }
   
   // Função para buscar o nome do paciente diretamente da lista de pacientes
-  const getPatientNameFromList = (patientId: string): string => {
-    // Dados mock dos pacientes disponíveis
-    const mockPatients = [
-      { id: 'mock-1', name: 'Maria Santos Silva' },
-      { id: 'mock-2', name: 'João Oliveira Costa' },
-      { id: 'mock-3', name: 'Ana Costa Ferreira' },
-      { id: 'mock-4', name: 'Pedro Almeida Santos' },
-      { id: 'mock-5', name: 'Lucia Ferreira Lima' }
-    ]
-    
-    const patient = mockPatients.find(p => p.id === patientId)
-    if (patient) {
-      console.log('Nome encontrado na lista local:', patientId, '->', patient.name)
-      return patient.name
+  const getPatientNameFromList = async (patientId: string): Promise<string> => {
+    try {
+      console.log('🔄 Buscando nome do paciente para ID:', patientId)
+      
+      // Buscar pacientes reais do Supabase
+      const response = await fetch('/api/patients')
+      if (!response.ok) {
+        console.error('❌ Erro na resposta da API de pacientes:', response.status)
+        throw new Error('Erro ao buscar pacientes')
+      }
+      
+      const data = await response.json()
+      console.log('📊 Dados recebidos da API de pacientes:', data)
+      
+      const patients = data.patients || []
+      console.log('👥 Lista de pacientes:', patients)
+      
+      // Buscar o paciente pelo ID
+      const patient = patients.find((p: any) => p.id === patientId)
+      console.log('🔍 Paciente encontrado:', patient)
+      
+      if (patient && patient.name) {
+        console.log('✅ Nome encontrado na lista real:', patientId, '->', patient.name)
+        return patient.name
+      }
+      
+      console.log('⚠️ Paciente não encontrado na lista:', patientId)
+      return 'Paciente Desconhecido'
+    } catch (error) {
+      console.error('❌ Erro ao buscar nome do paciente:', error)
+      return 'Paciente Desconhecido'
     }
-    
-    // Se não encontrar, usar o ID como base
-    if (patientId.startsWith('mock-')) {
-      const fallbackName = `Paciente ${patientId.split('-')[1]}`
-      console.log('Usando nome fallback:', fallbackName)
-      return fallbackName
-    }
-    
-    return 'Paciente Desconhecido'
   }
   
   // Submeter formulário
@@ -259,7 +267,7 @@ export default function NovaConsultaPage() {
       }
       
       // Buscar o nome real do paciente - usar função local primeiro
-      const patientName = getPatientNameFromList(data.patientId)
+      const patientName = await getPatientNameFromList(data.patientId)
       console.log('Nome do paciente encontrado:', patientName)
       
       console.log('Criando consulta com dados:', {
@@ -278,7 +286,6 @@ export default function NovaConsultaPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          doctor_id: '550e8400-e29b-41d4-a716-446655440000', // TODO: Obter do contexto de autenticação
           patient_id: data.patientId, // ID do paciente selecionado
           patient_name: patientName, // Nome real do paciente
           patient_context: data.context,

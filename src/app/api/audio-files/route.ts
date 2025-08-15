@@ -30,8 +30,7 @@ export async function POST(request: NextRequest) {
       storage_bucket,
       is_processed,
       processing_status,
-      audio_data,
-      original_blob_size
+      audio_data
     } = body
 
     if (!consultation_id || !filename || !mime_type || !size) {
@@ -147,11 +146,6 @@ export async function POST(request: NextRequest) {
               console.warn('⚠️ Erro ao verificar bucket:', bucketCheckError)
             }
             
-            console.log('🎵 API - Iniciando upload para storage...')
-            console.log('🎵 API - Caminho do storage:', storage_path)
-            console.log('🎵 API - Tamanho do buffer:', audioBuffer.length, 'bytes')
-            console.log('🎵 API - Tipo MIME:', mime_type)
-            
             // Fazer upload do arquivo
             const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
               .from('audio-files')
@@ -165,8 +159,6 @@ export async function POST(request: NextRequest) {
               throw new Error(`Erro no upload: ${uploadError.message}`)
             }
             
-            console.log('✅ Upload realizado com sucesso:', uploadData)
-            
             // Obter URL pública do arquivo
             const { data: urlData } = supabaseAdmin.storage
               .from('audio-files')
@@ -174,7 +166,6 @@ export async function POST(request: NextRequest) {
             
             finalStoragePath = urlData.publicUrl
             console.log('✅ Arquivo salvo no storage com sucesso:', finalStoragePath)
-            console.log('✅ Tamanho do arquivo no storage:', audioBuffer.length, 'bytes')
             
           } catch (storageError) {
             console.error('❌ Erro no storage:', storageError)
@@ -191,12 +182,15 @@ export async function POST(request: NextRequest) {
         finalStoragePath = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/audio-files/placeholder.webm`
       }
 
-      // Criar registro no banco de dados
       const { data: audioFile, error } = await supabase
         .from('audio_files')
         .insert({
           consultation_id,
-          filename,
+          file_name: filename, // Campo obrigatório conforme schema
+          file_size: size,     // Campo obrigatório conforme schema
+          file_url: finalStoragePath, // Campo obrigatório conforme schema
+          filename,            // Campo adicional
+          original_name: null,
           mime_type,
           size,
           duration,
@@ -219,9 +213,7 @@ export async function POST(request: NextRequest) {
         audioFile,
         success: true,
         source: 'supabase',
-        storage_url: finalStoragePath,
-        // Retornar também o base64 para reprodução direta
-        audio_base64: audio_data
+        storage_url: finalStoragePath
       })
       
     } catch (supabaseError) {

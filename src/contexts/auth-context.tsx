@@ -59,15 +59,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGoogle = async () => {
     try {
       setLoading(true)
-      const { error } = await supabase.auth.signInWithOAuth({
+      console.log('AuthContext - Iniciando login com Google')
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/dashboard`
         }
       })
-      if (error) throw error
+      
+      if (error) {
+        console.error('AuthContext - Erro no OAuth:', error)
+        throw error
+      }
+      
+      console.log('AuthContext - OAuth iniciado:', data)
+      
+      // Não definir loading como false aqui, pois o usuário será redirecionado
+      // O loading será definido como false quando retornar do callback
     } catch (error) {
-      console.error('Erro ao fazer login com Google:', error)
+      console.error('AuthContext - Erro ao fazer login com Google:', error)
       setLoading(false)
       throw error
     }
