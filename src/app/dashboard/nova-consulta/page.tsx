@@ -18,6 +18,7 @@ import { useAutosaveContextForm } from "@/components/recording/hooks/use-autosav
 import { newAppointmentSchema, type NewAppointmentFormData } from "@/lib/validations"
 import { PatientModal } from "@/components/dashboard/patient-modal"
 import { useRecordingStore } from "@/components/recording/store/recording-store"
+import { useAuth } from "@/contexts/auth-context"
 
 // Tipo para o formulário de paciente
 interface PatientFormData {
@@ -31,6 +32,7 @@ interface PatientFormData {
 export default function NovaConsultaPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const { session } = useAuth()
   const [showPatientModal, setShowPatientModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   
@@ -190,7 +192,10 @@ export default function NovaConsultaPage() {
       // Buscar dados do paciente na API
       console.log('Buscando paciente na API:', patientId)
       try {
-        const response = await fetch(`/api/patients/${patientId}`)
+        const response = await fetch(`/api/patients/${patientId}`, {
+          headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+          credentials: 'same-origin'
+        })
         if (response.ok) {
           const patientData = await response.json()
           const name = patientData.patient?.name
@@ -222,7 +227,10 @@ export default function NovaConsultaPage() {
       console.log('🔄 Buscando nome do paciente para ID:', patientId)
       
       // Buscar pacientes reais do Supabase
-      const response = await fetch('/api/patients')
+      const response = await fetch('/api/patients', {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+        credentials: 'same-origin'
+      })
       if (!response.ok) {
         console.error('❌ Erro na resposta da API de pacientes:', response.status)
         throw new Error('Erro ao buscar pacientes')
@@ -284,6 +292,7 @@ export default function NovaConsultaPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {})
         },
         body: JSON.stringify({
           patient_id: data.patientId, // ID do paciente selecionado
