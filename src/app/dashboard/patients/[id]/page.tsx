@@ -286,7 +286,8 @@ export default function PatientDataPage() {
       console.log('🔍 URL contém supabase.co?', audioFile.file_url.includes('supabase.co'))
       
       // Verificar se é uma URL HTTP válida (simplificar validação)
-      const sourceUrl = audioFile.file_url || (audioFile.storage_path?.startsWith('http') ? audioFile.storage_path : undefined)
+      // Preferir streaming via proxy para evitar erros de transporte/CORS
+      const sourceUrl = `/api/audio-files/stream?consultation_id=${consultationId}`
       if (sourceUrl && sourceUrl.startsWith('http')) {
         console.log('✅ URL válida detectada, criando elemento de áudio...')
         
