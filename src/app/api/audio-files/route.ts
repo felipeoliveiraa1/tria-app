@@ -166,12 +166,22 @@ export async function POST(request: NextRequest) {
               throw new Error(`Erro no upload: ${uploadError.message}`)
             }
             
-            // Obter URL pública do arquivo
-            const { data: urlData } = supabaseAdmin.storage
-              .from('audio-files')
-              .getPublicUrl(storage_path)
-            
-            finalStoragePath = urlData.publicUrl
+            // Obter URL assinada (funciona mesmo com bucket privado)
+            let signedUrl: string | null = null
+            try {
+              const { data: signed } = await supabaseAdmin.storage
+                .from('audio-files')
+                .createSignedUrl(storage_path, 60 * 60 * 24 * 7) // 7 dias
+              signedUrl = signed?.signedUrl || null
+            } catch {}
+            // Fallback para URL pública
+            if (!signedUrl) {
+              const { data: pub } = supabaseAdmin.storage
+                .from('audio-files')
+                .getPublicUrl(storage_path)
+              signedUrl = pub.publicUrl
+            }
+            finalStoragePath = signedUrl
             console.log('✅ Arquivo salvo no storage com sucesso:', finalStoragePath)
             
           } catch (storageError) {
