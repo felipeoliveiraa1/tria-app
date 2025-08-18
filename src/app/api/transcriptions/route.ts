@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
 
 export async function POST(request: NextRequest) {
   try {
@@ -69,25 +70,31 @@ export async function POST(request: NextRequest) {
         }
       )
 
-      // Verificar se o usuário está autenticado
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      
-      // Para desenvolvimento, usar um doctor_id padrão se não houver usuário autenticado
-      let doctorId = 'a5a278fe-dfff-4105-9b3f-a8f515d7ced8' // ID válido que existe na tabela users
-      
-      if (!authError && user) {
-        doctorId = user.id
-        console.log('✅ API - Usuário autenticado:', user.email)
-      } else {
-        console.log('⚠️ API - Usuário não autenticado, usando ID padrão para desenvolvimento')
+      // Suporte a Authorization: Bearer
+      const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+      let userId: string | null = null
+      let db = supabase
+      if (authHeader?.toLowerCase().startsWith('bearer ')) {
+        const token = authHeader.split(' ')[1]
+        if (token) {
+          const direct = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { global: { headers: { Authorization: `Bearer ${token}` } } })
+          db = direct
+          const { data: u } = await direct.auth.getUser(token)
+          userId = u.user?.id ?? null
+        }
       }
+      if (!userId) {
+        const { data: u } = await supabase.auth.getUser()
+        if (u.user) userId = u.user.id
+      }
+      if (!userId) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
       // Verificar se a consulta existe e pertence ao usuário
-      const { data: consultation, error: consultationError } = await supabase
+      const { data: consultation, error: consultationError } = await db
         .from('consultations')
         .select('id, doctor_id')
         .eq('id', consultation_id)
-        .eq('doctor_id', doctorId)
+        .eq('doctor_id', userId)
         .single()
 
       if (consultationError || !consultation) {
@@ -98,7 +105,7 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      const { data: transcription, error } = await supabase
+      const { data: transcription, error } = await db
         .from('transcriptions')
         .insert({
           consultation_id,
@@ -173,37 +180,22 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Criar cliente Supabase com cookies para autenticação
+    // Criar cliente (cookies + Authorization)
     const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-          set(name: string, value: string, options: any) {
-            cookieStore.set(name, value, options)
-          },
-          remove(name: string, options: any) {
-            cookieStore.set(name, '', options)
-          },
-        },
+    const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+      cookies: {
+        get(name: string) { return cookieStore.get(name)?.value },
+        set(name: string, value: string, options: any) { cookieStore.set(name, value, options) },
+        remove(name: string, options: any) { cookieStore.set(name, '', options) },
+      },
+    })
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    let db = supabase
+    if (authHeader?.toLowerCase().startsWith('bearer ')) {
+      const token = authHeader.split(' ')[1]
+      if (token) {
+        db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { global: { headers: { Authorization: `Bearer ${token}` } } })
       }
-    )
-
-    // Verificar se o usuário está autenticado
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    // Para desenvolvimento, usar um doctor_id padrão se não houver usuário autenticado
-    let doctorId = 'a5a278fe-dfff-4105-9b3f-a8f515d7ced8' // ID válido que existe na tabela users
-    
-    if (!authError && user) {
-      doctorId = user.id
-      console.log('✅ API - Usuário autenticado:', user.email)
-    } else {
-      console.log('⚠️ API - Usuário não autenticado, usando ID padrão para desenvolvimento')
     }
 
     const { searchParams } = new URL(request.url)
@@ -211,7 +203,7 @@ export async function GET(request: NextRequest) {
     
     console.log('🔄 API - Buscando transcrições no Supabase:', { consultationId })
     
-    let query = supabase
+    let query = db
       .from('transcriptions')
       .select('*')
       .order('created_at', { ascending: false })

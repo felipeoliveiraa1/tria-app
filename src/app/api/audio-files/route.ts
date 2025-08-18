@@ -71,24 +71,31 @@ export async function POST(request: NextRequest) {
       )
 
       // Verificar se o usuário está autenticado
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      
-      // Para desenvolvimento, usar um doctor_id padrão se não houver usuário autenticado
-      let doctorId = 'a5a278fe-dfff-4105-9b3f-a8f515d7ced8' // ID válido que existe na tabela users
-      
-      if (!authError && user) {
-        doctorId = user.id
-        console.log('✅ API - Usuário autenticado:', user.email)
-      } else {
-        console.log('⚠️ API - Usuário não autenticado, usando ID padrão para desenvolvimento')
+      // Suporte a Authorization: Bearer
+      const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+      let userId: string | null = null
+      let db = supabase
+      if (authHeader?.toLowerCase().startsWith('bearer ')) {
+        const token = authHeader.split(' ')[1]
+        if (token) {
+          const direct = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { global: { headers: { Authorization: `Bearer ${token}` } } })
+          db = direct
+          const { data: u } = await direct.auth.getUser(token)
+          userId = u.user?.id ?? null
+        }
       }
+      if (!userId) {
+        const { data: u } = await supabase.auth.getUser()
+        if (u.user) userId = u.user.id
+      }
+      if (!userId) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
       // Verificar se a consulta existe e pertence ao usuário
-      const { data: consultation, error: consultationError } = await supabase
+      const { data: consultation, error: consultationError } = await db
         .from('consultations')
         .select('id, doctor_id')
         .eq('id', consultation_id)
-        .eq('doctor_id', doctorId)
+        .eq('doctor_id', userId)
         .single()
 
       if (consultationError || !consultation) {
@@ -182,7 +189,7 @@ export async function POST(request: NextRequest) {
         finalStoragePath = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/audio-files/placeholder.webm`
       }
 
-      const { data: audioFile, error } = await supabase
+      const { data: audioFile, error } = await db
         .from('audio_files')
         .insert({
           consultation_id,
@@ -239,23 +246,21 @@ export async function GET(request: NextRequest) {
   try {
     // Criar cliente Supabase com cookies para autenticação
     const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-          set(name: string, value: string, options: any) {
-            cookieStore.set(name, value, options)
-          },
-          remove(name: string, options: any) {
-            cookieStore.set(name, '', options)
-          },
-        },
+    const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+      cookies: {
+        get(name: string) { return cookieStore.get(name)?.value },
+        set(name: string, value: string, options: any) { cookieStore.set(name, value, options) },
+        remove(name: string, options: any) { cookieStore.set(name, '', options) },
+      },
+    })
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    let db = supabase
+    if (authHeader?.toLowerCase().startsWith('bearer ')) {
+      const token = authHeader.split(' ')[1]
+      if (token) {
+        db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { global: { headers: { Authorization: `Bearer ${token}` } } })
       }
-    )
+    }
 
     // Verificar se o usuário está autenticado
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -275,7 +280,7 @@ export async function GET(request: NextRequest) {
     
     console.log('🔄 API - Buscando arquivos de áudio no Supabase:', { consultationId })
     
-    let query = supabase
+    let query = db
       .from('audio_files')
       .select('*')
       .order('uploaded_at', { ascending: false })
