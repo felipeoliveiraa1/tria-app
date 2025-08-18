@@ -71,19 +71,13 @@ export async function POST(request: NextRequest) {
       
       console.log('✅ API - Cliente Supabase criado')
 
-      // Verificar se o usuário está autenticado
+      // Exigir usuário autenticado (RLS)
       console.log('🔄 API - Verificando autenticação...')
       const { data: { user }, error: authError } = await supabase.auth.getUser()
-      
-      // Para desenvolvimento, usar um doctor_id padrão se não houver usuário autenticado
-      let doctorId = 'a5a278fe-dfff-4105-9b3f-a8f515d7ced8' // ID válido que existe na tabela users
-      
-      if (!authError && user) {
-        doctorId = user.id
-        console.log('✅ API - Usuário autenticado:', user.email)
-      } else {
-        console.log('⚠️ API - Usuário não autenticado, usando ID padrão para desenvolvimento:', doctorId)
+      if (authError || !user) {
+        return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
       }
+      const doctorId = user.id
 
       // Mapear consultation_type para modality se modality não for fornecido
       const finalModality = modality || consultation_type
@@ -107,7 +101,7 @@ export async function POST(request: NextRequest) {
       const { data: consultation, error } = await supabase
         .from('consultations')
         .insert([{
-          doctor_id: doctorId, // Usar ID do usuário autenticado ou ID padrão
+          doctor_id: doctorId, // ID do usuário autenticado (requerido pela RLS)
           patient_id,
           patient_name,
           patient_context,
