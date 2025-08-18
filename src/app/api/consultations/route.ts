@@ -198,6 +198,8 @@ export async function PUT(request: NextRequest) {
     
     console.log('✅ API - Variáveis de ambiente configuradas')
     
+    // Ler o body UMA única vez e reutilizar
+    const parsedBody = await request.json().catch(() => null)
     try {
       // Criar cliente Supabase com cookies para autenticação
       const cookieStore = await cookies()
@@ -237,7 +239,7 @@ export async function PUT(request: NextRequest) {
         console.log('⚠️ API - Usuário não autenticado, usando ID padrão para desenvolvimento:', doctorId)
       }
 
-      const body = await request.json()
+      const body = parsedBody || {}
       const { 
         id, 
         status, 
@@ -300,7 +302,7 @@ export async function PUT(request: NextRequest) {
       // Fallback para dados temporários em caso de erro
       console.log('🔄 API - Usando fallback temporário...')
       
-      const body = await request.json()
+      const body = parsedBody || {}
       const { 
         id, 
         status, 
