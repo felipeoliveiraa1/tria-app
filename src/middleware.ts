@@ -37,11 +37,10 @@ export async function middleware(req: NextRequest) {
       return res
     }
 
-    if (!session && !hasSbCookie && req.nextUrl.pathname.startsWith('/dashboard')) {
-      return NextResponse.redirect(new URL('/login', req.url))
-    }
+    // Não bloqueamos mais /dashboard aqui; a verificação fica no cliente.
 
-    if (session && (req.nextUrl.pathname === '/login' || req.nextUrl.pathname === '/register')) {
+    // Se já houver cookie de auth (ou sessão), não deixe permanecer em /login ou /register
+    if ((session || hasSbCookie) && (req.nextUrl.pathname === '/login' || req.nextUrl.pathname === '/register')) {
       return NextResponse.redirect(new URL('/dashboard', req.url))
     }
 
