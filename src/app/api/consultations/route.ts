@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,13 +72,31 @@ export async function POST(request: NextRequest) {
       
       console.log('✅ API - Cliente Supabase criado')
 
-      // Exigir usuário autenticado (RLS)
-      console.log('🔄 API - Verificando autenticação...')
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      if (authError || !user) {
+      // Suporte a Authorization: Bearer (sem cookies)
+      const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+      let userId: string | null = null
+      let db = supabase
+      if (authHeader?.toLowerCase().startsWith('bearer ')) {
+        const token = authHeader.split(' ')[1]
+        if (token) {
+          const direct = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            { global: { headers: { Authorization: `Bearer ${token}` } } }
+          )
+          db = direct
+          const { data: u } = await direct.auth.getUser(token)
+          userId = u.user?.id ?? null
+        }
+      }
+      if (!userId) {
+        const { data: u, error: e } = await supabase.auth.getUser()
+        if (!e && u.user) userId = u.user.id
+      }
+      if (!userId) {
         return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
       }
-      const doctorId = user.id
+      const doctorId = userId
 
       // Mapear consultation_type para modality se modality não for fornecido
       const finalModality = modality || consultation_type
@@ -98,7 +117,7 @@ export async function POST(request: NextRequest) {
         scheduled_time: finalScheduledTime
       })
 
-      const { data: consultation, error } = await supabase
+      const { data: consultation, error } = await db
         .from('consultations')
         .insert([{
           doctor_id: doctorId, // ID do usuário autenticado (requerido pela RLS)
