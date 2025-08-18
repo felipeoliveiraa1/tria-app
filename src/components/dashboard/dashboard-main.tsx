@@ -612,6 +612,49 @@ export function DashboardMain({
     },
   ]
 
+  const handleDownloadReport = () => {
+    try {
+      const header = [
+        'id',
+        'data',
+        'hora',
+        'paciente',
+        'tipo',
+        'status',
+        'duracao_s'
+      ]
+      const rows = consultations.map((c) => {
+        const date = c.created_at ? new Date(c.created_at) : new Date()
+        const dateStr = date.toLocaleDateString('pt-BR')
+        const timeStr = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        const patientName = c.patient_name || patients.find(p => p.id === c.patient_id)?.name || ''
+        return [
+          c.id,
+          dateStr,
+          timeStr,
+          `"${patientName.replaceAll('"', '""')}"`,
+          c.consultation_type || '',
+          c.status || '',
+          String(c.duration ?? 0)
+        ]
+      })
+      const csv = [header.join(','), ...rows.map(r => r.join(','))].join('\n')
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const today = new Date().toISOString().slice(0, 10)
+      a.download = `relatorio-consultas-${today}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Erro ao gerar relatório:', err)
+      alert('Não foi possível gerar o relatório. Tente novamente.')
+    }
+  }
+
   return (
     <main className="p-6 space-y-6 h-full w-full max-w-none">
       {/* Welcome Section */}
@@ -662,7 +705,18 @@ export function DashboardMain({
                 </div>
               </CardHeader>
               <CardContent>
-                <Button className={`w-full ${action.color} text-white`}>
+                <Button
+                  className={`w-full ${action.color} text-white`}
+                  onClick={() => {
+                    if (action.title === 'Nova Consulta') {
+                      onViewChange('nova-consulta')
+                    } else if (action.title === 'Ver Demonstração') {
+                      window.open('https://www.loom.com/share/collection/7871f9f0b8a44f7e83f2e7-demo', '_blank')
+                    } else if (action.title === 'Baixar Relatório') {
+                      handleDownloadReport()
+                    }
+                  }}
+                >
                   {action.action}
                 </Button>
               </CardContent>
