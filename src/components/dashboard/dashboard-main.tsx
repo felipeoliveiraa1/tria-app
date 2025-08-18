@@ -370,7 +370,7 @@ export function DashboardMain({
                             <Button 
                               variant="ghost" 
                               size="icon"
-                              onClick={() => window.open(`/dashboard/patients/${consulta.patient_id}`, '_blank')}
+                              onClick={() => window.open(`/dashboard/patients/${consulta.id}`, '_blank')}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
