@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
 
 export async function DELETE(request: Request) {
   try {
@@ -57,29 +58,33 @@ export async function GET(request: Request) {
     const id = segments[segments.length - 1]
 
     const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-          set(name: string, value: string, options: any) {
-            cookieStore.set(name, value, options)
-          },
-          remove(name: string, options: any) {
-            cookieStore.set(name, '', options)
-          },
-        },
+    const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+      cookies: {
+        get(name: string) { return cookieStore.get(name)?.value },
+        set(name: string, value: string, options: any) { cookieStore.set(name, value, options) },
+        remove(name: string, options: any) { cookieStore.set(name, '', options) },
+      },
+    })
+
+    // Suporte a Authorization: Bearer
+    const authHeader = (request as any).headers?.get?.('authorization') || (request as any).headers?.get?.('Authorization')
+    let db = supabase
+    let doctorId: string | null = null
+    if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
+      const token = authHeader.split(' ')[1]
+      if (token) {
+        const direct = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { global: { headers: { Authorization: `Bearer ${token}` } } })
+        db = direct
+        const { data: u } = await direct.auth.getUser(token)
+        doctorId = u.user?.id ?? null
       }
-    )
+    }
+    if (!doctorId) {
+      const { data: u } = await supabase.auth.getUser()
+      doctorId = u.user?.id ?? null
+    }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    let doctorId = 'a5a278fe-dfff-4105-9b3f-a8f515d7ced8'
-    if (!authError && user) doctorId = user.id
-
-    const { data: consultation, error } = await supabase
+    const { data: consultation, error } = await db
       .from('consultations')
       .select('*')
       .eq('id', id)
