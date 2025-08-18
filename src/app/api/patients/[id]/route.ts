@@ -1,23 +1,23 @@
 import { NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 // Função para criar cliente Supabase com fallback
-const createSupabaseClient = () => {
-  try {
-    const { createClient } = require('@supabase/supabase-js')
-    
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.warn('Variáveis do Supabase não configuradas, usando modo mock')
-      return null
+const createSupabaseClient = async () => {
+  const cookieStore = await cookies()
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+        set() {},
+        remove() {},
+      },
     }
-    
-    return createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    )
-  } catch (error) {
-    console.warn('Supabase não disponível, usando modo mock:', error)
-    return null
-  }
+  )
 }
 
 // Dados mockados para desenvolvimento
@@ -41,22 +41,26 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'ID do paciente não fornecido' }, { status: 400 })
     }
 
-    const supabase = createSupabaseClient()
+    const supabase = await createSupabaseClient()
     
-    if (supabase) {
-      try {
-        const { data: patient, error } = await supabase
-          .from('patients')
-          .select('*')
-          .eq('id', id)
-          .single()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
 
-        if (error) throw error
+    try {
+      const { data: patient, error } = await supabase
+        .from('patients')
+        .select('*')
+        .eq('id', id)
+        .eq('doctor_id', user.id)
+        .single()
 
-        return NextResponse.json({ patient, success: true })
-      } catch (supabaseError) {
-        console.warn('Falha no Supabase, usando modo mock:', supabaseError)
-      }
+      if (error) throw error
+
+      return NextResponse.json({ patient, success: true })
+    } catch (supabaseError) {
+      console.warn('Falha no Supabase, usando modo mock:', supabaseError)
     }
 
     let mockPatient = mockPatients.find(p => p.id === id)

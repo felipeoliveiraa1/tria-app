@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,16 +12,31 @@ export async function GET(request: NextRequest) {
 
     console.log('🔄 API - Buscando pacientes no Supabase:', { page, limit, search, status })
 
-    if (!supabase) {
-      return NextResponse.json(
-        { error: 'Supabase não está configurado' },
-        { status: 500 }
-      )
+    // Criar cliente autenticado via cookies (respeita RLS)
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+          set() {},
+          remove() {},
+        },
+      }
+    )
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
     let query = supabase
       .from('patients')
       .select('*', { count: 'exact' })
+      .eq('doctor_id', user.id)
 
     // Aplicar filtros
     if (search) {
