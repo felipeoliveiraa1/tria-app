@@ -27,12 +27,17 @@ export async function middleware(req: NextRequest) {
       error,
     } = await supabase.auth.getSession()
 
+    // Heurística: se o Supabase ainda não conseguiu carregar a sessão,
+    // mas os cookies sb-* estão presentes, permitimos a navegação
+    // para evitar bloqueio indevido após o callback.
+    const hasSbCookie = req.cookies.getAll().some((c) => c.name.startsWith('sb-') && c.name.endsWith('-auth-token'))
+
     if (error) {
       console.log('Middleware - Erro ao verificar sessão:', error.message)
       return res
     }
 
-    if (!session && req.nextUrl.pathname.startsWith('/dashboard')) {
+    if (!session && !hasSbCookie && req.nextUrl.pathname.startsWith('/dashboard')) {
       return NextResponse.redirect(new URL('/login', req.url))
     }
 
