@@ -20,10 +20,19 @@ export default function LoginPage() {
   const router = useRouter()
   const { signInWithGoogle, signInWithEmailPassword, user, loading: authLoading } = useAuth()
 
-  // Debug: mostrar estado atual
+  // Debug: mostrar estado atual e redirecionar quando autenticado
   useEffect(() => {
     console.log('LoginPage - Estado atual:', { user, authLoading })
-  }, [user, authLoading])
+    if (!authLoading && user) {
+      // Evitar que o usuário fique na tela de login após autenticar
+      const t = setTimeout(() => {
+        try {
+          router.replace('/dashboard')
+        } catch {}
+      }, 150)
+      return () => clearTimeout(t)
+    }
+  }, [user, authLoading, router])
 
 
 
