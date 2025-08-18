@@ -194,7 +194,7 @@ export const useRecordingStore = create<RecordingState>()(
               console.log('✅ Store: Consulta atualizada com sucesso para COMPLETED:', responseData)
             }
 
-            // 2. Salvar arquivo de áudio
+            // 2. Salvar arquivo de áudio (não bloquear a finalização)
             console.log('🎵 Store: Salvando arquivo de áudio para consulta:', state.consultationId)
             // Se o blob de entrada não for claramente WAV, converte o sample para WAV para compatibilidade de player
             let uploadBlob = audioBlob
@@ -207,7 +207,7 @@ export const useRecordingStore = create<RecordingState>()(
               uploadBlob = encodeWavPcm16(float, sampleRate)
             }
 
-            const audioResponse = await fetch('/api/audio-files', {
+            const audioPromise = fetch('/api/audio-files', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -233,16 +233,11 @@ export const useRecordingStore = create<RecordingState>()(
                 }),
                 original_blob_size: uploadBlob.size || 1000
               })
-            })
-
-            if (!audioResponse.ok) {
-              const errorText = await audioResponse.text()
-              console.error('❌ Store: Erro ao salvar arquivo de áudio:', errorText)
-              return false
-            } else {
-              const audioData = await audioResponse.json()
-              console.log('✅ Store: Arquivo de áudio salvo com sucesso:', audioData)
-            }
+            }).then(async (r) => {
+              if (!r.ok) {
+                const t = await r.text(); console.error('❌ Store: Erro ao salvar arquivo de áudio:', t)
+              } else { console.log('✅ Store: Arquivo de áudio salvo') }
+            }).catch((e) => console.error('❌ Store: Falha no upload de áudio:', e))
 
             // 3. Salvar transcrição
             const fullTranscript = state.finalSegments.map(segment => segment.text).join(' ')
@@ -251,7 +246,7 @@ export const useRecordingStore = create<RecordingState>()(
               console.log('📝 Store: Salvando transcrição para consulta:', state.consultationId)
               console.log('📝 Store: Transcrição:', fullTranscript.substring(0, 100) + '...')
               
-              const transcriptionResponse = await fetch('/api/transcriptions', {
+              const transcriptionPromise = fetch('/api/transcriptions', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -267,21 +262,17 @@ export const useRecordingStore = create<RecordingState>()(
                   language: 'pt-BR',
                   model_used: 'web-speech-api'
                 })
-              })
-
-              if (!transcriptionResponse.ok) {
-                const errorText = await transcriptionResponse.text()
-                console.error('❌ Store: Erro ao salvar transcrição:', errorText)
-                return false
-              } else {
-                const transcriptionData = await transcriptionResponse.json()
-                console.log('✅ Store: Transcrição salva com sucesso:', transcriptionData)
-              }
+              }).then(async (r) => {
+                if (!r.ok) { const t = await r.text(); console.error('❌ Store: Erro ao salvar transcrição:', t) }
+                else { console.log('✅ Store: Transcrição salva') }
+              }).catch((e) => console.error('❌ Store: Falha ao salvar transcrição:', e))
             } else {
               console.log('⚠️ Store: Nenhuma transcrição para salvar')
             }
 
-            console.log('🎉 Store: Dados da consulta salvos com sucesso:', state.consultationId)
+            // Disparar operações em background (não bloquear UI)
+            Promise.allSettled([audioPromise]).catch(() => {})
+            console.log('🎉 Store: Consulta finalizada (envios assíncronos em andamento):', state.consultationId)
             console.log('📊 Store: Resumo do salvamento:')
             console.log('- Consulta atualizada para COMPLETED')
             console.log('- Arquivo de áudio salvo')
