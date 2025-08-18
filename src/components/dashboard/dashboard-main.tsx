@@ -925,7 +925,15 @@ export function DashboardMain({
             
             {/* Conteúdo do Painel de Gravação */}
             <div className="flex-1 overflow-hidden">
-              <RecordingPanel consultationId={currentRecordingId} onClose={onCloseRecording} />
+              <RecordingPanel 
+                consultationId={currentRecordingId} 
+                onClose={onCloseRecording}
+                onFinalized={() => {
+                  // Recarregar consultas e ir para a aba de consultas
+                  refreshConsultations()
+                  onViewChange('consultas')
+                }}
+              />
             </div>
           </div>
         </div>
@@ -1052,7 +1060,7 @@ function PatientForm({
 }
 
 // Componente do Painel de Gravação
-function RecordingPanel({ consultationId, onClose }: { consultationId: string; onClose: () => void }) {
+function RecordingPanel({ consultationId, onClose, onFinalized }: { consultationId: string; onClose: () => void; onFinalized?: () => void }) {
   const [isRecording, setIsRecording] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [transcription, setTranscription] = useState("")
@@ -1094,6 +1102,31 @@ function RecordingPanel({ consultationId, onClose }: { consultationId: string; o
 
   const stopRecording = () => {
     setIsRecording(false)
+  }
+
+  const finalizeConsultation = async () => {
+    try {
+      // Converter ms para segundos
+      const durationSeconds = Math.floor(elapsed / 1000)
+      const res = await fetch('/api/consultations', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: consultationId,
+          status: 'COMPLETED',
+          duration: durationSeconds
+        })
+      })
+      if (!res.ok) {
+        const txt = await res.text()
+        throw new Error(txt)
+      }
+      onFinalized?.()
+      onClose()
+    } catch (err) {
+      console.error('Erro ao finalizar consulta:', err)
+      alert('Não foi possível finalizar a consulta. Tente novamente.')
+    }
   }
 
   const formatTime = (ms: number) => {
@@ -1249,7 +1282,7 @@ function RecordingPanel({ consultationId, onClose }: { consultationId: string; o
             <Button variant="outline" onClick={onClose}>
               Cancelar
             </Button>
-            <Button>
+            <Button onClick={finalizeConsultation}>
               <FileText className="h-4 w-4 mr-2" />
               Finalizar Consulta
             </Button>
