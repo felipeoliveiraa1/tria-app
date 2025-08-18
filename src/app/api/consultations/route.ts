@@ -145,33 +145,10 @@ export async function POST(request: NextRequest) {
       
     } catch (supabaseError) {
       console.error('❌ API - Erro na conexão com Supabase:', supabaseError)
-      
-      // Fallback para dados temporários em caso de erro
-      console.log('🔄 API - Usando fallback temporário...')
-      
-      const tempConsultation = {
-        id: `temp-${Date.now()}`,
-        doctor_id: 'a5a278fe-dfff-4105-9b3f-a8f515d7ced8',
-        patient_id,
-        patient_name,
-        patient_context,
-        consultation_type,
-        modality: consultation_type,
-        status,
-        scheduled_date: new Date().toISOString().split('T')[0],
-        scheduled_time: new Date().toTimeString().split(' ')[0],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        message: 'Consulta temporária - Supabase indisponível'
-      }
-
-      console.log('✅ API - Consulta temporária criada:', tempConsultation)
-      return NextResponse.json({
-        consultation: tempConsultation,
-        success: true,
-        source: 'fallback',
-        error: supabaseError instanceof Error ? supabaseError.message : 'Erro desconhecido'
-      })
+      return NextResponse.json(
+        { error: supabaseError instanceof Error ? supabaseError.message : 'Erro desconhecido ao criar consulta' },
+        { status: 500 }
+      )
     }
     
   } catch (error) {
