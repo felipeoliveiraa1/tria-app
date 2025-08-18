@@ -285,11 +285,10 @@ export default function PatientDataPage() {
       console.log('🔍 URL começa com http?', audioFile.file_url.startsWith('http'))
       console.log('🔍 URL contém supabase.co?', audioFile.file_url.includes('supabase.co'))
       
-      // Verificar se é uma URL HTTP válida (simplificar validação)
-      // Preferir streaming via proxy para evitar erros de transporte/CORS
+      // Sempre usar o proxy de streaming do Next para evitar erros de transporte/CORS
       const sourceUrl = `/api/audio-files/stream?consultation_id=${consultationId}`
-      if (sourceUrl && sourceUrl.startsWith('http')) {
-        console.log('✅ URL válida detectada, criando elemento de áudio...')
+      if (sourceUrl) {
+        console.log('✅ URL de streaming definida, criando elemento de áudio...')
         
         try {
           const audio = new Audio(sourceUrl)
@@ -415,15 +414,8 @@ export default function PatientDataPage() {
           })
         }
       } else {
-        console.log('⚠️ URL inválida (não começa com http):', audioFile.file_url)
+        console.log('⚠️ URL de streaming não definida')
         setAudioElement(null)
-        
-        // Mostrar toast informativo
-        toast({
-          title: "URL de áudio inválida",
-          description: "O arquivo de áudio não possui uma URL válida para reprodução.",
-          variant: "destructive"
-        })
       }
     } else {
       console.log('❌ audioFile inválido ou sem URL:', audioFile)
@@ -448,72 +440,23 @@ export default function PatientDataPage() {
 
   const handleDownloadAudio = () => {
     if (audioFile) {
-      console.log('Iniciando reprodução do áudio:', audioFile.filename)
-      console.log('URL do áudio:', audioFile.file_url)
+      console.log('Preparando download do áudio:', audioFile.filename)
       
       try {
-        // Verificar se temos uma URL válida do Supabase Storage
-        if (audioFile.file_url && audioFile.file_url.startsWith('http')) {
-          // Criar elemento de áudio para reproduzir
-          const audio = new Audio(audioFile.file_url)
-          
-          // Adicionar event listeners
-          audio.addEventListener('loadstart', () => {
-            console.log('Carregando áudio...')
-            toast({
-              title: "Carregando áudio...",
-              description: "O arquivo está sendo carregado.",
-            })
-          })
-          
-          audio.addEventListener('canplay', () => {
-            console.log('Áudio pronto para reprodução')
-            toast({
-              title: "Áudio carregado!",
-              description: "Clique para reproduzir o áudio.",
-              action: <CheckCircle className="h-4 w-4 text-green-500" />
-            })
-          })
-          
-          audio.addEventListener('error', (e) => {
-            console.error('Erro ao carregar áudio:', e)
-            toast({
-              title: "Erro ao carregar áudio",
-              description: "Não foi possível carregar o arquivo de áudio.",
-              variant: "destructive"
-            })
-          })
-          
-          // Tentar reproduzir o áudio
-          audio.play().catch((error) => {
-            console.error('Erro ao reproduzir áudio:', error)
-            
-            // Se não conseguir reproduzir, tentar download
-            console.log('Tentando download como fallback...')
-            const a = document.createElement('a')
-            a.href = audioFile.file_url
-            a.download = audioFile.filename || `audio-${consultationId}.webm`
-            a.target = '_blank'
-            document.body.appendChild(a)
-            a.click()
-            document.body.removeChild(a)
-            
-            toast({
-              title: "Download iniciado!",
-              description: `Arquivo ${audioFile.filename} está sendo baixado.`,
-              action: <CheckCircle className="h-4 w-4 text-green-500" />
-            })
-          })
-          
-        } else {
-          // Se não temos URL válida, mostrar erro
-          console.error('URL do áudio inválida:', audioFile.file_url)
-          toast({
-            title: "Arquivo não disponível",
-            description: "O arquivo de áudio não está acessível.",
-            variant: "destructive"
-          })
-        }
+        // Baixar via proxy para garantir headers e compatibilidade
+        const downloadUrl = `/api/audio-files/stream?consultation_id=${consultationId}&download=1`
+        const a = document.createElement('a')
+        a.href = downloadUrl
+        a.download = audioFile.filename || `consulta-${consultationId}.webm`
+        a.target = '_blank'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        toast({
+          title: "Download iniciado!",
+          description: `Arquivo ${audioFile.filename || ''} está sendo baixado.`,
+          action: <CheckCircle className="h-4 w-4 text-green-500" />
+        })
         
       } catch (error) {
         console.error('Erro ao reproduzir áudio:', error)

@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url)
     const id = url.searchParams.get('id')
     const consultationId = url.searchParams.get('consultation_id')
+    const download = url.searchParams.get('download')
 
     if (!id && !consultationId) {
       return NextResponse.json({ error: 'Parâmetro id ou consultation_id é obrigatório' }, { status: 400 })
@@ -74,10 +75,11 @@ export async function GET(request: NextRequest) {
     }
 
     const headers = new Headers()
-    headers.set('Content-Type', audio.mime_type || proxied.headers.get('Content-Type') || 'audio/wav')
+    headers.set('Content-Type', audio.mime_type || proxied.headers.get('Content-Type') || 'audio/webm')
     headers.set('Cache-Control', 'private, max-age=60')
-    const filename = audio.file_name || audio.filename || 'audio.wav'
-    headers.set('Content-Disposition', `inline; filename="${filename}"`)
+    const filename = audio.file_name || audio.filename || 'audio.webm'
+    const isDownload = download === '1' || download === 'true'
+    headers.set('Content-Disposition', `${isDownload ? 'attachment' : 'inline'}; filename="${filename}"`)
 
     return new Response(proxied.body, { status: 200, headers })
   } catch (err: any) {

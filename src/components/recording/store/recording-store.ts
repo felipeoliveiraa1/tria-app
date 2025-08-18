@@ -196,16 +196,11 @@ export const useRecordingStore = create<RecordingState>()(
 
             // 2. Salvar arquivo de áudio (não bloquear a finalização)
             console.log('🎵 Store: Salvando arquivo de áudio para consulta:', state.consultationId)
-            // Se o blob de entrada não for claramente WAV, converte o sample para WAV para compatibilidade de player
-            let uploadBlob = audioBlob
-            if (!audioBlob.type || !audioBlob.type.includes('wav')) {
-              const sampleRate = 44100
-              const duration = Math.max(1, state.elapsed || 1)
-              const samples = sampleRate * duration
-              const float = new Float32Array(samples)
-              for (let i = 0; i < samples; i++) float[i] = Math.sin(2 * Math.PI * 440 * i / sampleRate) * 0.1
-              uploadBlob = encodeWavPcm16(float, sampleRate)
-            }
+            const uploadBlob = audioBlob
+            const mimeType = uploadBlob.type || 'audio/webm'
+            const ext = mimeType.includes('wav') ? 'wav' : 'webm'
+            const storageFileName = `consulta-${state.consultationId}.${ext}`
+            const storagePath = `consultations/${state.consultationId}/audio.${ext}`
 
             const audioPromise = fetch('/api/audio-files', {
               method: 'POST',
@@ -215,11 +210,11 @@ export const useRecordingStore = create<RecordingState>()(
               },
               body: JSON.stringify({
                 consultation_id: state.consultationId,
-                filename: `consulta-${state.consultationId}.wav`,
-                mime_type: 'audio/wav',
-                size: uploadBlob.size || 1000,
+                filename: storageFileName,
+                mime_type: mimeType,
+                size: uploadBlob.size || 0,
                 duration: state.elapsed,
-                storage_path: `consultations/${state.consultationId}/audio.wav`,
+                storage_path: storagePath,
                 storage_bucket: 'audio-files',
                 is_processed: true,
                 processing_status: 'completed',
@@ -231,7 +226,7 @@ export const useRecordingStore = create<RecordingState>()(
                     reader.readAsDataURL(uploadBlob)
                   } catch (e) { reject(e) }
                 }),
-                original_blob_size: uploadBlob.size || 1000
+                original_blob_size: uploadBlob.size || 0
               })
             }).then(async (r) => {
               if (!r.ok) {

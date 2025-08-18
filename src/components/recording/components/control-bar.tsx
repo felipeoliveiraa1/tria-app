@@ -13,6 +13,7 @@ import {
   Clock
 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useRecorder } from "../hooks/use-recorder"
 
 interface ControlBarProps {
   consultationId: string
@@ -34,6 +35,14 @@ export function ControlBar({ consultationId }: ControlBarProps) {
     saveConsultationData
   } = useRecordingStore()
 
+  const {
+    isRecording: isRec,
+    startRecording,
+    stopRecording,
+    pauseRecording,
+    resumeRecording
+  } = useRecorder()
+
   const formatTime = (ms: number) => {
     const seconds = Math.floor(ms / 1000)
     const minutes = Math.floor(seconds / 60)
@@ -45,8 +54,9 @@ export function ControlBar({ consultationId }: ControlBarProps) {
     try {
       console.log('Iniciando gravação para consulta:', consultationId)
       
-      // Iniciar no store
+      // Iniciar estado visual e MediaRecorder real
       start(consultationId, 'default')
+      await startRecording(consultationId)
       
       console.log('Gravação iniciada com sucesso')
     } catch (error) {
@@ -57,53 +67,9 @@ export function ControlBar({ consultationId }: ControlBarProps) {
   const handleStopRecording = async () => {
     try {
       console.log('Parando gravação...')
-      
-      // Criar um Blob de áudio básico mas válido
-      // Em uma implementação real, isso viria do MediaRecorder
-      const sampleRate = 44100
-      const duration = 3 // 3 segundos de áudio
-      const samples = sampleRate * duration
-      
-      // Criar dados de áudio simples (onda senoidal)
-      const float = new Float32Array(samples)
-      for (let i = 0; i < samples; i++) {
-        float[i] = Math.sin(2 * Math.PI * 440 * i / sampleRate) * 0.1
-      }
-      // Encoder WAV PCM16
-      const encodeWavPcm16 = (samples: Float32Array, sr: number) => {
-        const numChannels = 1
-        const bytesPerSample = 2
-        const blockAlign = numChannels * bytesPerSample
-        const byteRate = sr * blockAlign
-        const dataSize = samples.length * bytesPerSample
-        const buffer = new ArrayBuffer(44 + dataSize)
-        const view = new DataView(buffer)
-        const writeString = (o: number, s: string) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)) }
-        writeString(0, 'RIFF')
-        view.setUint32(4, 36 + dataSize, true)
-        writeString(8, 'WAVE')
-        writeString(12, 'fmt ')
-        view.setUint32(16, 16, true)
-        view.setUint16(20, 1, true)
-        view.setUint16(22, 1, true)
-        view.setUint32(24, sr, true)
-        view.setUint32(28, byteRate, true)
-        view.setUint16(32, blockAlign, true)
-        view.setUint16(34, 16, true)
-        writeString(36, 'data')
-        view.setUint32(40, dataSize, true)
-        let off = 44
-        for (let i = 0; i < samples.length; i++, off += 2) {
-          const s = Math.max(-1, Math.min(1, samples[i]))
-          view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true)
-        }
-        return new Blob([view], { type: 'audio/wav' })
-      }
-      const audioBlob = encodeWavPcm16(float, sampleRate)
-      console.log('🎵 Áudio criado:', audioBlob.size, 'bytes')
-      
-      // Salvar dados da consulta usando o store
-      const success = await saveConsultationData(audioBlob)
+      // Parar MediaRecorder real e salvar via hooks
+      const cid = await stopRecording()
+      const success = !!cid
       
       if (success) {
         console.log('Dados salvos com sucesso, parando gravação...')
@@ -126,52 +92,9 @@ export function ControlBar({ consultationId }: ControlBarProps) {
   const handleFinalizeConsultation = async () => {
     try {
       console.log('Finalizando consulta...')
-      
-      // Criar um Blob de áudio básico mas válido
-      // Em uma implementação real, isso viria do MediaRecorder
-      const sampleRate = 44100
-      const duration = 3 // 3 segundos de áudio
-      const samples = sampleRate * duration
-      
-      // Criar dados de áudio simples (onda senoidal)
-      const float = new Float32Array(samples)
-      for (let i = 0; i < samples; i++) {
-        float[i] = Math.sin(2 * Math.PI * 440 * i / sampleRate) * 0.1
-      }
-      const encodeWavPcm16 = (samples: Float32Array, sr: number) => {
-        const numChannels = 1
-        const bytesPerSample = 2
-        const blockAlign = numChannels * bytesPerSample
-        const byteRate = sr * blockAlign
-        const dataSize = samples.length * bytesPerSample
-        const buffer = new ArrayBuffer(44 + dataSize)
-        const view = new DataView(buffer)
-        const writeString = (o: number, s: string) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)) }
-        writeString(0, 'RIFF')
-        view.setUint32(4, 36 + dataSize, true)
-        writeString(8, 'WAVE')
-        writeString(12, 'fmt ')
-        view.setUint32(16, 16, true)
-        view.setUint16(20, 1, true)
-        view.setUint16(22, 1, true)
-        view.setUint32(24, sr, true)
-        view.setUint32(28, byteRate, true)
-        view.setUint16(32, blockAlign, true)
-        view.setUint16(34, 16, true)
-        writeString(36, 'data')
-        view.setUint32(40, dataSize, true)
-        let off = 44
-        for (let i = 0; i < samples.length; i++, off += 2) {
-          const s = Math.max(-1, Math.min(1, samples[i]))
-          view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true)
-        }
-        return new Blob([view], { type: 'audio/wav' })
-      }
-      const audioBlob = encodeWavPcm16(float, sampleRate)
-      console.log('🎵 Áudio criado:', audioBlob.size, 'bytes')
-      
-      // Salvar dados da consulta usando o store
-      const success = await saveConsultationData(audioBlob)
+      // Parar MediaRecorder real e persistir
+      const cid = await stopRecording()
+      const success = !!cid
       
       if (success) {
         console.log('Consulta finalizada com sucesso, redirecionando...')
@@ -247,7 +170,7 @@ export function ControlBar({ consultationId }: ControlBarProps) {
             {isRecording && (
               <>
                 <Button
-                  onClick={pause}
+                  onClick={pauseRecording}
                   variant="outline"
                   size="lg"
                 >
@@ -269,7 +192,7 @@ export function ControlBar({ consultationId }: ControlBarProps) {
             {isPaused && (
               <>
                 <Button
-                  onClick={resume}
+                  onClick={resumeRecording}
                   size="lg"
                   className="bg-green-600 hover:bg-green-700"
                 >
