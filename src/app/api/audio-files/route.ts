@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
           mime_type,
           size,
           duration,
-          storage_path: finalStoragePath,
+          storage_path, // manter o caminho interno, não a URL pública
           storage_bucket,
           is_processed,
           processing_status,

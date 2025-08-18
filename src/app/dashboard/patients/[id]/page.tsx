@@ -247,18 +247,19 @@ export default function PatientDataPage() {
   useEffect(() => {
     console.log('🔄 useEffect do áudio executado, audioFile:', audioFile)
     
-    if (audioFile && audioFile.file_url) {
+    if (audioFile && (audioFile.file_url || audioFile.storage_path)) {
       console.log('🔍 Analisando URL do áudio:', audioFile.file_url)
       console.log('🔍 Tipo da URL:', typeof audioFile.file_url)
       console.log('🔍 URL começa com http?', audioFile.file_url.startsWith('http'))
       console.log('🔍 URL contém supabase.co?', audioFile.file_url.includes('supabase.co'))
       
       // Verificar se é uma URL HTTP válida (simplificar validação)
-      if (audioFile.file_url.startsWith('http')) {
+      const sourceUrl = audioFile.file_url || (audioFile.storage_path?.startsWith('http') ? audioFile.storage_path : undefined)
+      if (sourceUrl && sourceUrl.startsWith('http')) {
         console.log('✅ URL válida detectada, criando elemento de áudio...')
         
         try {
-          const audio = new Audio(audioFile.file_url)
+          const audio = new Audio(sourceUrl)
           console.log('✅ Elemento de áudio criado com sucesso')
           
           audio.addEventListener('loadstart', () => {
