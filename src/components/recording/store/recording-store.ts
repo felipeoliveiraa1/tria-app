@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
+import { supabase } from '@/lib/supabase'
 
 export type RecordingStatus = 'idle' | 'recording' | 'paused' | 'finalizing' | 'finished' | 'error'
 
@@ -135,10 +136,14 @@ export const useRecordingStore = create<RecordingState>()(
             
             // 1. Atualizar consulta com duração e status COMPLETED
             console.log('📝 Store: Atualizando consulta para COMPLETED:', state.consultationId)
+            const { data: sessionData } = await supabase.auth.getSession()
+            const accessToken = sessionData?.session?.access_token
+            const authHeaders: Record<string, string> = accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
             const consultationResponse = await fetch('/api/consultations', {
               method: 'PUT',
               headers: {
                 'Content-Type': 'application/json',
+                ...authHeaders
               },
               body: JSON.stringify({
                 id: state.consultationId,
@@ -162,6 +167,7 @@ export const useRecordingStore = create<RecordingState>()(
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
+                ...authHeaders
               },
               body: JSON.stringify({
                 consultation_id: state.consultationId,
@@ -198,6 +204,7 @@ export const useRecordingStore = create<RecordingState>()(
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
+                  ...authHeaders
                 },
                 body: JSON.stringify({
                   consultation_id: state.consultationId,
