@@ -66,6 +66,7 @@ export default function PatientDataPage() {
   const [audioFile, setAudioFile] = useState<AudioFile | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null)
+  const [audioRetries, setAudioRetries] = useState(0)
 
   // Carregar dados da consulta
   useEffect(() => {
@@ -166,20 +167,24 @@ export default function PatientDataPage() {
         }
 
         // Buscar arquivo de áudio usando a API correta
-        try {
-          const audioResponse = await fetch(`/api/audio-files?consultation_id=${consultationId}`, { headers: authHeader })
-          if (audioResponse.ok) {
-            const audioData = await audioResponse.json()
-            console.log('Dados do áudio:', audioData)
-            if (audioData.audioFiles && audioData.audioFiles.length > 0) {
-              setAudioFile(audioData.audioFiles[0]) // Pegar o primeiro arquivo de áudio
+        const fetchAudio = async () => {
+          try {
+            const audioResponse = await fetch(`/api/audio-files?consultation_id=${consultationId}`, { headers: authHeader })
+            if (audioResponse.ok) {
+              const audioData = await audioResponse.json()
+              console.log('Dados do áudio:', audioData)
+              if (audioData.audioFiles && audioData.audioFiles.length > 0) {
+                setAudioFile(audioData.audioFiles[0])
+                return true
+              }
             }
-          } else {
-            console.log('Arquivo de áudio não encontrado para consulta:', consultationId)
+          } catch (err) {
+            console.log('Erro ao buscar áudio:', err)
           }
-        } catch (error) {
-          console.log('Erro ao buscar arquivo de áudio:', error)
+          return false
         }
+        const ok = await fetchAudio()
+        if (!ok) setAudioRetries(1)
         
         setIsLoading(false)
       } catch (error) {
@@ -202,6 +207,33 @@ export default function PatientDataPage() {
 
     loadData()
   }, [consultationId])
+
+  // Polling leve para o áudio (aguarda upload/assinatura)
+  useEffect(() => {
+    if (audioFile || audioRetries === 0) return
+    let cancelled = false
+    const run = async () => {
+      try {
+        const token = await import('@/lib/supabase').then(m => m.supabase.auth.getSession()).then(r => r.data.session?.access_token).catch(() => undefined)
+        const headers = token ? { Authorization: `Bearer ${token}` } as any : undefined
+        const audioResponse = await fetch(`/api/audio-files?consultation_id=${consultationId}`, { headers })
+        if (cancelled) return
+        if (audioResponse.ok) {
+          const d = await audioResponse.json()
+          if (d.audioFiles && d.audioFiles.length > 0) {
+            setAudioFile(d.audioFiles[0])
+            return
+          }
+        }
+      } catch {}
+      // Tenta novamente até 10 vezes
+      if (!cancelled && audioRetries < 10) {
+        setTimeout(() => setAudioRetries(prev => prev + 1), 1500)
+      }
+    }
+    run()
+    return () => { cancelled = true }
+  }, [audioRetries, audioFile, consultationId])
 
   // Função para reproduzir/pausar áudio
   const toggleAudio = async () => {
