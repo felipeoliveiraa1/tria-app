@@ -8,40 +8,66 @@ export default function AuthCallbackPage() {
   const router = useRouter()
 
   useEffect(() => {
-    const finalizeOAuth = async () => {
+    let unsub: { data: { subscription: { unsubscribe: () => void } } } | null = null
+
+    const run = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession()
-        if (error) {
-          console.error('Callback - erro ao obter sessão:', error)
-        }
-
-        // Se a sessão já existe, apenas seguir para o dashboard
-        if (data.session) {
+        // 1) Se já houver sessão, redireciona
+        const { data: sessionData } = await supabase.auth.getSession()
+        if (sessionData.session) {
           router.replace('/dashboard')
           return
         }
 
-        // Para PKCE, o Supabase processa automaticamente via detectSessionInUrl
-        // Forçamos uma verificação de URL atual para capturar o código
-        const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(window.location.href)
+        // 2) Ouvir evento de autenticação (caso a sessão seja criada em background)
+        unsub = supabase.auth.onAuthStateChange((_event, session) => {
+          if (session) {
+            router.replace('/dashboard')
+          }
+        }) as any
+
+        // 3) Tentar realizar o exchange do código (PKCE)
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(window.location.href)
         if (exchangeError) {
-          console.error('Callback - erro ao trocar código por sessão:', exchangeError)
-          router.replace('/auth/auth-code-error')
+          console.error('Callback - exchange falhou:', exchangeError)
+          const url = new URL('/auth/auth-code-error', window.location.origin)
+          url.searchParams.set('error', exchangeError.name || 'exchange_failed')
+          url.searchParams.set('description', exchangeError.message || 'Falha ao trocar código por sessão')
+          router.replace(url.toString())
           return
         }
 
-        if (exchangeData?.session) {
-          router.replace('/dashboard')
-        } else {
-          router.replace('/login')
-        }
+        // 4) Pequeno atraso para aguardar a sessão
+        setTimeout(async () => {
+          const { data: check } = await supabase.auth.getSession()
+          if (!check.session) {
+            // Verificar erros na URL
+            const url = new URL(window.location.href)
+            const oauthError = url.searchParams.get('error') || url.searchParams.get('error_description')
+            if (oauthError) {
+              console.error('Callback - erro OAuth na URL:', oauthError)
+            }
+            const errUrl = new URL('/auth/auth-code-error', window.location.origin)
+            if (oauthError) {
+              errUrl.searchParams.set('error', 'oauth_error')
+              errUrl.searchParams.set('description', oauthError)
+            }
+            router.replace(errUrl.toString())
+          }
+        }, 1500)
       } catch (err) {
         console.error('Callback - erro inesperado:', err)
         router.replace('/auth/auth-code-error')
       }
     }
 
-    finalizeOAuth()
+    run()
+
+    return () => {
+      try {
+        unsub?.data?.subscription?.unsubscribe()
+      } catch {}
+    }
   }, [router])
 
   return (

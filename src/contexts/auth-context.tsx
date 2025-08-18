@@ -90,10 +90,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true)
       console.log('AuthContext - Iniciando login com Google')
       
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${siteUrl}/auth/callback`,
           queryParams: {
             // Garantir que retorne para nossa URL correta em produção
             // e evitar quedas para domínio da Vercel genérico
