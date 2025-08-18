@@ -32,6 +32,15 @@ export async function GET(request: NextRequest) {
       }
     )
 
+    // Suporte a token via Authorization: Bearer
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    if (authHeader?.toLowerCase().startsWith('bearer ')) {
+      const token = authHeader.split(' ')[1]
+      if (token) {
+        await supabase.auth.setSession({ access_token: token, refresh_token: '' as any })
+      }
+    }
+
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })

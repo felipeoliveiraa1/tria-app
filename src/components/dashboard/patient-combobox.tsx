@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/contexts/auth-context'
 
 interface PatientOption {
   id: string
@@ -20,6 +21,7 @@ export const PatientCombobox: React.FC<PatientComboboxProps> = ({ value, onValue
   const [error, setError] = useState<string | null>(null)
   const [patients, setPatients] = useState<PatientOption[]>([])
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
+  const { session } = useAuth()
 
   const fetchPatients = async (q: string) => {
     try {
@@ -28,7 +30,10 @@ export const PatientCombobox: React.FC<PatientComboboxProps> = ({ value, onValue
       const params = new URLSearchParams()
       params.set('limit', '20')
       if (q.trim()) params.set('search', q.trim())
-      const res = await fetch(`/api/patients?${params.toString()}`)
+      const res = await fetch(`/api/patients?${params.toString()}`, {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+        credentials: 'same-origin'
+      })
       if (!res.ok) {
         const txt = await res.text()
         throw new Error(txt)
