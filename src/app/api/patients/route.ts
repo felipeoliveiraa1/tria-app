@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
 export async function GET(request: NextRequest) {
@@ -32,24 +33,37 @@ export async function GET(request: NextRequest) {
       }
     )
 
-    // Suporte a token via Authorization: Bearer
+    // Suporte a token via Authorization: Bearer (executa queries no contexto do usuário)
     const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    let userId: string | null = null
+    let db = supabase
     if (authHeader?.toLowerCase().startsWith('bearer ')) {
       const token = authHeader.split(' ')[1]
       if (token) {
-        await supabase.auth.setSession({ access_token: token, refresh_token: '' as any })
+        const direct = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          { global: { headers: { Authorization: `Bearer ${token}` } } }
+        )
+        db = direct
+        const { data: userFromToken } = await direct.auth.getUser(token)
+        userId = userFromToken.user?.id ?? null
       }
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
+    if (!userId) {
+      const { data: supaUser } = await supabase.auth.getUser()
+      if (supaUser?.user) userId = supaUser.user.id
+    }
+
+    if (!userId) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
-    let query = supabase
+    let query = db
       .from('patients')
       .select('*', { count: 'exact' })
-      .eq('doctor_id', user.id)
+      .eq('doctor_id', userId)
 
     // Aplicar filtros
     if (search) {
@@ -96,3 +110,4 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
