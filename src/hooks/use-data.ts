@@ -373,8 +373,19 @@ export function useStats() {
   const { user } = useAuth()
 
   useEffect(() => {
-    if (!user) return
+    // Se não houver usuário, finalize loading e mantenha zeros
+    if (!user) {
+      setStats({
+        totalConsultations: 0,
+        totalPatients: 0,
+        todayConsultations: 0,
+        productivity: 0
+      })
+      setLoading(false)
+      return
+    }
 
+    let cancelled = false
     const fetchStats = async () => {
       try {
         setLoading(true)
@@ -394,11 +405,13 @@ export function useStats() {
         // Buscar consultas de hoje
         const today = new Date()
         today.setHours(0, 0, 0, 0)
+        const todayIso = today.toISOString()
         const { count: todayConsultations } = await supabase
           .from('consultations')
           .select('*', { count: 'exact', head: true })
           .eq('doctor_id', user.id)
-          .gte('created_at', today.toISOString())
+          // Compatível com schemas usando created_at OU scheduled_date
+          .or(`created_at.gte.${todayIso},scheduled_date.gte.${todayIso}`)
 
         // Calcular produtividade (consultas concluídas / total)
         const { count: completedConsultations } = await supabase
@@ -407,25 +420,30 @@ export function useStats() {
           .eq('doctor_id', user.id)
           .eq('status', 'COMPLETED')
 
-        const productivity = (totalConsultations || 0) > 0 
-          ? Math.round((completedConsultations || 0) / (totalConsultations || 1) * 100)
+        const totalAll = totalConsultations ?? 0
+        const completedAll = completedConsultations ?? 0
+        const productivity = totalAll > 0 
+          ? Math.round((completedAll) / (totalAll) * 100)
           : 0
 
-        setStats({
-          totalConsultations: totalConsultations || 0,
-          totalPatients: totalPatients || 0,
-          todayConsultations: todayConsultations || 0,
-          productivity
-        })
+        if (!cancelled) {
+          setStats({
+            totalConsultations: totalAll,
+            totalPatients: totalPatients ?? 0,
+            todayConsultations: todayConsultations ?? 0,
+            productivity
+          })
+        }
       } catch (error) {
         console.error('Erro ao buscar estatísticas:', error)
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
 
     fetchStats()
-  }, [user])
+    return () => { cancelled = true }
+  }, [user?.id])
 
   return { stats, loading }
 }
