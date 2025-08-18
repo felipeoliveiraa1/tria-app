@@ -617,7 +617,7 @@ export function DashboardMain({
       {/* Welcome Section */}
       <div className="space-y-2">
         <h2 className="text-3xl font-bold text-foreground">
-          Bem-vindo, {user?.user_metadata?.full_name || user?.email || "Dr. Silva"}! 👋
+          Bem-vindo, {user?.user_metadata?.full_name || (user as any)?.user_metadata?.name || user?.email || "Dr. Silva"}! 👋
         </h2>
         <p className="text-foreground-secondary">
           Aqui está um resumo das suas atividades de hoje

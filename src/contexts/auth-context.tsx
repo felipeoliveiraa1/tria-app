@@ -50,6 +50,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session)
         setUser(session?.user ?? null)
         setLoading(false)
+
+        // Sincronizar/registrar perfil na tabela users ao autenticar
+        try {
+          if (event === 'SIGNED_IN' && session?.user) {
+            const authUser = session.user
+            const nameFromMetadata = (authUser.user_metadata as any)?.full_name 
+              || (authUser.user_metadata as any)?.name 
+              || authUser.email?.split('@')[0] 
+              || 'Usuário'
+            
+            const { error: upsertError } = await supabase
+              .from('users')
+              .upsert({
+                id: authUser.id,
+                email: authUser.email,
+                name: nameFromMetadata,
+                is_doctor: true,
+                updated_at: new Date().toISOString()
+              })
+            
+            if (upsertError) {
+              console.error('Erro ao sincronizar perfil do usuário:', upsertError)
+            } else {
+              console.log('Perfil sincronizado/atualizado com sucesso')
+            }
+          }
+        } catch (syncErr) {
+          console.error('Erro inesperado ao sincronizar perfil:', syncErr)
+        }
       }
     )
 
@@ -64,7 +93,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            // Garantir que retorne para nossa URL correta em produção
+            // e evitar quedas para domínio da Vercel genérico
+            prompt: 'select_account'
+          }
         }
       })
       
@@ -101,7 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const updateProfile = async (updates: Partial<{ full_name: string; specialty: string; phone: string }>) => {
+  const updateProfile = async (updates: Partial<{ name: string; specialty: string; phone: string }>) => {
     try {
       if (!user) throw new Error('Usuário não autenticado')
       

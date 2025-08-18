@@ -40,7 +40,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
         <div className="hidden lg:block">
           <h1 className="text-xl font-semibold text-foreground">Dashboard</h1>
           <p className="text-sm text-foreground-secondary">
-            Bem-vindo ao TRIA, {user?.user_metadata?.full_name || user?.email || "Usuário"}
+            Bem-vindo ao TRIA, {user?.user_metadata?.full_name || (user as any)?.user_metadata?.name || user?.email || "Usuário"}
           </p>
         </div>
 

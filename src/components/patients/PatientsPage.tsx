@@ -49,13 +49,11 @@ export function PatientsPage() {
 
   const handleCreatePatient = async (patientData: PatientFormData) => {
     try {
-      // Converter PatientFormData para Patient
-      const newPatient: Patient = {
+      const payload = {
         ...patientData,
-        id: `temp-${Date.now()}`, // ID temporário, será substituído pelo backend
-        doctor_id: user?.id || 'temp-doctor-id' // TODO: Usar ID real do usuário logado
+        doctor_id: user?.id || ''
       }
-      await addPatient(newPatient)
+      await addPatient(payload as any)
       setIsCreateOpen(false)
     } catch (error) {
       console.error("Erro ao criar paciente:", error)

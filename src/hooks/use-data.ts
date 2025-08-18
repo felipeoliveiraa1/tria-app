@@ -18,10 +18,16 @@ export function usePatients() {
         if (!supabase) {
           throw new Error('Supabase não está configurado')
         }
+        if (!user?.id) {
+          console.log('👤 usePatients - Usuário não autenticado, retornando lista vazia')
+          setPatients([])
+          return
+        }
 
         const { data, error: supabaseError } = await supabase
           .from('patients')
           .select('*')
+          .eq('doctor_id', user?.id || '')
           .order('created_at', { ascending: false })
 
         if (supabaseError) {
@@ -42,7 +48,7 @@ export function usePatients() {
     }
 
     fetchPatients()
-  }, [])
+  }, [user?.id])
 
   const addPatient = async (patientData: Omit<Patient, 'id' | 'created_at' | 'updated_at'>) => {
     try {
@@ -170,10 +176,16 @@ export function useConsultations() {
         if (!supabase) {
           throw new Error('Supabase não está configurado')
         }
+        if (!user?.id) {
+          console.log('👤 useConsultations - Usuário não autenticado, retornando lista vazia')
+          setConsultations([])
+          return
+        }
 
         const { data, error: supabaseError } = await supabase
           .from('consultations')
           .select('*')
+          .eq('doctor_id', user?.id || '')
           .order('created_at', { ascending: false })
 
         if (supabaseError) {
@@ -194,7 +206,7 @@ export function useConsultations() {
     }
 
     fetchConsultations()
-  }, [])
+  }, [user?.id])
 
   // Log quando o estado muda
   useEffect(() => {
@@ -386,14 +398,14 @@ export function useStats() {
           .from('consultations')
           .select('*', { count: 'exact', head: true })
           .eq('doctor_id', user.id)
-          .gte('scheduled_date', today.toISOString())
+          .gte('created_at', today.toISOString())
 
         // Calcular produtividade (consultas concluídas / total)
         const { count: completedConsultations } = await supabase
           .from('consultations')
           .select('*', { count: 'exact', head: true })
           .eq('doctor_id', user.id)
-          .eq('status', 'concluida')
+          .eq('status', 'COMPLETED')
 
         const productivity = (totalConsultations || 0) > 0 
           ? Math.round((completedConsultations || 0) / (totalConsultations || 1) * 100)
