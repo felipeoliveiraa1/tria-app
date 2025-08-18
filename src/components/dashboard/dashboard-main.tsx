@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Mic, FileText, Users, TrendingUp, Plus, Play, Download, ArrowLeft, Search, Calendar, Clock, User, Phone, MapPin, Edit, Trash2, Eye, X, Square, Pause, RotateCcw } from "lucide-react"
+import { Mic, FileText, Users, TrendingUp, Plus, Play, Download, ArrowLeft, Search, Calendar, Clock, User, Phone, MapPin, Trash2, Eye, X, Square, Pause, RotateCcw } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useStats, usePatients, useConsultations } from "@/hooks/use-data"
 import { supabase } from "@/lib/supabase"
@@ -374,14 +374,21 @@ export function DashboardMain({
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon">
-                              <Edit className="h-4 w-4" />
-                            </Button>
                             <Button 
                               variant="ghost" 
                               size="icon" 
                               className="text-destructive"
-                              onClick={() => deleteConsultation(consulta.id)}
+                              onClick={async () => {
+                                try {
+                                  const ok = confirm('Deseja realmente apagar esta consulta? Esta ação não pode ser desfeita.')
+                                  if (!ok) return
+                                  await deleteConsultation(consulta.id)
+                                  refreshConsultations()
+                                } catch (e) {
+                                  console.error('Erro ao apagar consulta:', e)
+                                  alert('Não foi possível apagar a consulta. Tente novamente.')
+                                }
+                              }}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

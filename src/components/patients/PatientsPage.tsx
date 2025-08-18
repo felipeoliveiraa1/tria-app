@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search, Plus, Edit, Trash2, Eye, User, Phone, MapPin } from "lucide-react"
+import { Search, Plus, Trash2, Eye, User, Phone, MapPin } from "lucide-react"
 import { usePatients } from "@/hooks/use-data"
 import { PatientUpsertDialog } from "./PatientUpsertDialog"
 import { useAuth } from "@/contexts/auth-context"
@@ -185,13 +185,7 @@ export function PatientsPage() {
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={() => openEditDialog(paciente)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      {/* Edição pode ser feita abrindo novamente o diálogo com dados pré-carregados pela lista (opcional) */}
                       <Button 
                         variant="ghost" 
                         size="icon"
