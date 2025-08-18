@@ -55,7 +55,9 @@ export default function RecordingPage() {
         console.log('Carregando dados da consulta:', consultationId)
         
         // Buscar dados reais da API
-        const response = await fetch(`/api/consultations/${consultationId}`)
+        const token = await import('@/lib/supabase').then(m => m.supabase.auth.getSession()).then(r => r.data.session?.access_token).catch(() => undefined)
+        const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined
+        const response = await fetch(`/api/consultations/${consultationId}`, { headers: authHeaders })
         if (response.ok) {
           const data = await response.json()
           console.log('Dados da consulta carregados:', data)

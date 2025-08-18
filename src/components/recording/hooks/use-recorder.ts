@@ -19,6 +19,7 @@ export const useRecorder = () => {
   const [audioChunks, setAudioChunks] = useState<Blob[]>([])
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const stoppingRef = useRef(false)
   
   const audioContextRef = useRef<AudioContext | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
@@ -134,21 +135,33 @@ export const useRecorder = () => {
     }
 
     try {
-      console.log('🔄 Parando gravação...')
-      
-      // Parar stream de áudio primeiro
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop())
-        setStream(null)
+      if (stoppingRef.current) {
+        console.log('⏳ Parada já em andamento; ignorando chamada duplicada')
+        return consultationId || ''
       }
+      stoppingRef.current = true
+      console.log('🔄 Parando gravação...')
 
-      // Parar a gravação
-      mediaRecorder.stop()
-      
-      // Aguardar a finalização
-      await new Promise<void>((resolve) => {
-        mediaRecorder.onstop = () => resolve()
+      // Preparar listener de parada ANTES de chamar stop()
+      const stopped = new Promise<void>((resolve) => {
+        const onStopped = () => resolve()
+        try {
+          // @ts-ignore - MediaRecorder suporta addEventListener
+          mediaRecorder.addEventListener('stop', onStopped, { once: true })
+        } catch {
+          // Fallback
+          // @ts-ignore
+          mediaRecorder.onstop = onStopped
+        }
+        // Timeout de segurança
+        setTimeout(() => resolve(), 2000)
       })
+
+      // Parar a gravação (gera evento 'stop')
+      try { mediaRecorder.stop() } catch {}
+      
+      // Aguardar finalização do recorder
+      await stopped
 
       // Processar o áudio capturado
       const audioBlob = new Blob(audioChunks, { type: 'audio/webm' })
@@ -166,9 +179,11 @@ export const useRecorder = () => {
       }
       
       console.log('✅ Gravação parada com sucesso')
+      stoppingRef.current = false
       return consultationId || ''
     } catch (error) {
       console.error('❌ Erro ao parar gravação:', error)
+      stoppingRef.current = false
       return consultationId || ''
     }
   }, [mediaRecorder, isRecording, stream, audioChunks, consultationId, elapsed, finalSegments])
