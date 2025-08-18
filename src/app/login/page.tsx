@@ -18,7 +18,7 @@ export default function LoginPage() {
 
   
   const router = useRouter()
-  const { signInWithGoogle, user, loading: authLoading } = useAuth()
+  const { signInWithGoogle, signInWithEmailPassword, user, loading: authLoading } = useAuth()
 
   // Debug: mostrar estado atual
   useEffect(() => {
@@ -106,8 +106,8 @@ export default function LoginPage() {
     try {
       setLoading(true)
       setError("")
-      // Implementar login com email/senha se necessário
-      setError("Login com email/senha não implementado. Use o login com Google.")
+      await signInWithEmailPassword(email, password)
+      window.location.href = '/dashboard'
     } catch (error) {
       setError("Erro ao fazer login. Verifique suas credenciais.")
       console.error("Erro no login:", error)

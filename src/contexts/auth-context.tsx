@@ -9,6 +9,8 @@ interface AuthContextType {
   session: Session | null
   loading: boolean
   signInWithGoogle: () => Promise<void>
+  signInWithEmailPassword: (email: string, password: string) => Promise<void>
+  signUpWithEmailPassword: (params: { name: string; email: string; password: string }) => Promise<{ needsEmailConfirmation: boolean }>
   signOut: () => Promise<void>
   updateProfile: (updates: Partial<{ full_name: string; specialty: string; phone: string }>) => Promise<void>
 }
@@ -122,6 +124,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const signInWithEmailPassword = async (email: string, password: string) => {
+    try {
+      setLoading(true)
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) throw error
+      setSession(data.session ?? null)
+      setUser(data.session?.user ?? null)
+    } catch (error) {
+      console.error('AuthContext - Erro ao fazer login com email/senha:', error)
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const signUpWithEmailPassword = async ({ name, email, password }: { name: string; email: string; password: string }) => {
+    try {
+      setLoading(true)
+      const siteUrl = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_SITE_URL || '')
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: siteUrl ? `${siteUrl}/auth/callback` : undefined,
+          data: { full_name: name }
+        }
+      })
+      if (error) throw error
+      const needsEmailConfirmation = !data.session
+      return { needsEmailConfirmation }
+    } catch (error) {
+      console.error('AuthContext - Erro ao cadastrar usuário:', error)
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const signOut = async () => {
     try {
       setLoading(true)
@@ -164,6 +204,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session,
     loading,
     signInWithGoogle,
+    signInWithEmailPassword,
+    signUpWithEmailPassword,
     signOut,
     updateProfile
   }
