@@ -245,6 +245,33 @@ export function DashboardMain({
     patient.email.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  // Enquanto não montou no cliente, evita hidratação instável renderizando placeholder estático
+  if (!mounted) {
+    return (
+      <main className="p-4 lg:p-6 space-y-6 h-full w-full max-w-none pb-16">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          <div className="xl:col-span-2">
+            <div className="h-40 rounded-lg bg-muted animate-pulse" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="h-24 rounded-lg bg-muted animate-pulse" />
+            <div className="h-24 rounded-lg bg-muted animate-pulse" />
+            <div className="h-24 rounded-lg bg-muted animate-pulse" />
+            <div className="h-24 rounded-lg bg-muted animate-pulse" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="h-28 rounded-lg bg-muted animate-pulse" />
+          <div className="h-28 rounded-lg bg-muted animate-pulse" />
+          <div className="h-28 rounded-lg bg-muted animate-pulse" />
+        </div>
+        <div className="space-y-4 w-full">
+          <div className="h-64 rounded-lg bg-muted animate-pulse" />
+        </div>
+      </main>
+    )
+  }
+
   // Tela de Nova Consulta
   if (currentView === "nova-consulta") {
     // Importar dinamicamente para evitar problemas de SSR
