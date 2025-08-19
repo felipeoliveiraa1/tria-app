@@ -72,7 +72,8 @@ export default function PatientDataPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        console.log('Carregando dados para consulta:', consultationId)
+        const pagePrefix = '[PatientsPage]'
+        console.log(pagePrefix, 'Iniciando carregamento para consultaId:', consultationId)
         
         // Buscar dados da consulta
         const { supabase } = await import('@/lib/supabase')
@@ -80,19 +81,27 @@ export default function PatientDataPage() {
         const token = data.session?.access_token
         const headers: Record<string, string> = { 'cache-control': 'no-store' }
         if (token) headers['Authorization'] = `Bearer ${token}`
-        const consultationResponse = await fetch(`/api/consultations/${consultationId}`, { headers })
+        console.log(pagePrefix, 'GET /api/consultations/:id', { consultationId, hasToken: !!token })
+        const t0 = performance.now()
+        const consultationResponse = await fetch(`/api/consultations/${consultationId}`, { headers, cache: 'no-store' })
+        console.log(pagePrefix, 'Resp /api/consultations/:id', { status: consultationResponse.status, ok: consultationResponse.ok, ms: Math.round(performance.now() - t0) })
         if (consultationResponse.ok) {
           const consultationData = await consultationResponse.json()
           console.log('Dados da consulta carregados:', consultationData)
           setConsultation(consultationData.consultation)
         } else {
-          console.error('Erro ao buscar consulta:', consultationResponse.status)
+          let body: any = null
+          try { body = await consultationResponse.json() } catch {}
+          console.error(pagePrefix, 'Erro ao buscar consulta por id', { status: consultationResponse.status, body })
           // Tentar buscar na lista geral de consultas
           try {
-            const allConsultationsResponse = await fetch('/api/consultations', { headers })
+            console.log(pagePrefix, 'GET /api/consultations (fallback)')
+            const t1 = performance.now()
+            const allConsultationsResponse = await fetch('/api/consultations', { headers, cache: 'no-store' })
+            console.log(pagePrefix, 'Resp /api/consultations (fallback)', { status: allConsultationsResponse.status, ok: allConsultationsResponse.ok, ms: Math.round(performance.now() - t1) })
             if (allConsultationsResponse.ok) {
               const allConsultationsData = await allConsultationsResponse.json()
-              console.log('Todas as consultas disponíveis:', allConsultationsData)
+              console.log(pagePrefix, 'Lista geral consultas count:', allConsultationsData?.consultations?.length)
               
               // Procurar pela consulta específica
               const foundConsultation = allConsultationsData.consultations?.find(
@@ -103,7 +112,7 @@ export default function PatientDataPage() {
                 console.log('Consulta encontrada na lista geral:', foundConsultation)
                 setConsultation(foundConsultation)
               } else {
-                console.log('Consulta não encontrada, criando mock')
+                console.warn(pagePrefix, 'Consulta não encontrada, criando mock')
                 // Criar uma consulta mock para evitar erro 404
                 setConsultation({
                   id: consultationId,
@@ -118,7 +127,7 @@ export default function PatientDataPage() {
                 })
               }
             } else {
-              console.log('Falha ao buscar todas as consultas, criando mock')
+              console.warn(pagePrefix, 'Falha ao buscar todas as consultas, criando mock')
               // Criar uma consulta mock para evitar erro 404
               setConsultation({
                 id: consultationId,
@@ -133,7 +142,7 @@ export default function PatientDataPage() {
               })
             }
           } catch (fallbackError) {
-            console.error('Erro no fallback:', fallbackError)
+            console.error(pagePrefix, 'Erro no fallback /api/consultations:', fallbackError)
             // Criar uma consulta mock para evitar erro 404
             setConsultation({
               id: consultationId,
@@ -151,8 +160,10 @@ export default function PatientDataPage() {
 
         // Buscar transcrição usando a API correta
         try {
-          console.log('🔄 Buscando transcrição para consulta:', consultationId)
-          const transcriptionResponse = await fetch(`/api/transcriptions?consultation_id=${consultationId}`, { headers })
+          console.log(pagePrefix, 'GET /api/transcriptions?consultation_id=', consultationId)
+          const t2 = performance.now()
+          const transcriptionResponse = await fetch(`/api/transcriptions?consultation_id=${consultationId}`, { headers, cache: 'no-store' })
+          console.log(pagePrefix, 'Resp /api/transcriptions', { status: transcriptionResponse.status, ok: transcriptionResponse.ok, ms: Math.round(performance.now() - t2) })
           if (transcriptionResponse.ok) {
             const transcriptionData = await transcriptionResponse.json()
             console.log('✅ Dados da transcrição recebidos:', transcriptionData)
@@ -163,16 +174,21 @@ export default function PatientDataPage() {
               console.log('⚠️ Nenhuma transcrição encontrada para esta consulta')
             }
           } else {
-            console.log('❌ Erro ao buscar transcrição:', transcriptionResponse.status)
+            let trBody: any = null
+            try { trBody = await transcriptionResponse.json() } catch {}
+            console.error(pagePrefix, 'Erro transcrição', { status: transcriptionResponse.status, body: trBody })
           }
         } catch (error) {
-          console.error('❌ Erro ao buscar transcrição:', error)
+          console.error(pagePrefix, 'Exceção ao buscar transcrição:', error)
         }
 
         // Buscar arquivo de áudio usando a API correta
         const fetchAudio = async () => {
           try {
-            const audioResponse = await fetch(`/api/audio-files?consultation_id=${consultationId}`, { headers })
+            console.log(pagePrefix, 'GET /api/audio-files?consultation_id=', consultationId)
+            const t3 = performance.now()
+            const audioResponse = await fetch(`/api/audio-files?consultation_id=${consultationId}`, { headers, cache: 'no-store' })
+            console.log(pagePrefix, 'Resp /api/audio-files', { status: audioResponse.status, ok: audioResponse.ok, ms: Math.round(performance.now() - t3) })
             if (audioResponse.ok) {
               const audioData = await audioResponse.json()
               console.log('Dados do áudio:', audioData)
@@ -182,16 +198,19 @@ export default function PatientDataPage() {
               }
             }
           } catch (err) {
-            console.log('Erro ao buscar áudio:', err)
+            console.error(pagePrefix, 'Exceção ao buscar áudio:', err)
           }
           return false
         }
         const ok = await fetchAudio()
-        if (!ok) setAudioRetries(1)
-        
+        if (!ok) {
+          console.warn(pagePrefix, 'Áudio não encontrado inicialmente; iniciando polling')
+          setAudioRetries(1)
+        }
+        console.log(pagePrefix, 'Carregamento concluído')
         setIsLoading(false)
       } catch (error) {
-        console.error('Erro ao carregar dados:', error)
+        console.error('[PatientsPage] Erro geral ao carregar dados:', error)
         // Em caso de erro, criar dados mock para evitar tela em branco
         setConsultation({
           id: consultationId,
