@@ -7,9 +7,10 @@ export function usePatients() {
   const [patients, setPatients] = useState<Patient[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { user } = useAuth()
+  const { user, sessionReady } = useAuth()
 
   useEffect(() => {
+    if (!sessionReady) return
     const fetchPatients = async () => {
       try {
         setLoading(true)
@@ -48,7 +49,7 @@ export function usePatients() {
     }
 
     fetchPatients()
-  }, [user?.id])
+  }, [user?.id, sessionReady])
 
   const addPatient = async (patientData: Omit<Patient, 'id' | 'created_at' | 'updated_at'>) => {
     try {
@@ -164,9 +165,10 @@ export function useConsultations() {
   const [consultations, setConsultations] = useState<Consultation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { user } = useAuth()
+  const { user, sessionReady } = useAuth()
 
   useEffect(() => {
+    if (!sessionReady) return
     console.log('🔄 useConsultations - useEffect executado')
     const fetchConsultations = async () => {
       try {
@@ -206,7 +208,7 @@ export function useConsultations() {
     }
 
     fetchConsultations()
-  }, [user?.id])
+  }, [user?.id, sessionReady])
 
   // Log quando o estado muda
   useEffect(() => {

@@ -67,7 +67,7 @@ export function DashboardSidebar({ open, setOpen, currentView, onViewChange }: D
           <div className="flex h-16 items-center justify-between px-3 lg:px-4 border-b border-border overflow-hidden">
             <div className="flex items-center">
               <Logo />
-              <span className={`${open ? 'opacity-100 ml-2' : 'opacity-0 ml-0 lg:group-hover/sidebar:opacity-100 lg:group-hover/sidebar:ml-2'} transition-all text-sm font-medium whitespace-nowrap`}>BETAA</span>
+              <span className={`${open ? 'opacity-100 ml-2' : 'opacity-0 ml-0 lg:group-hover/sidebar:opacity-100 lg:group-hover/sidebar:ml-2'} transition-all text-sm font-medium whitespace-nowrap`}>BETA</span>
             </div>
             <Button
               variant="ghost"

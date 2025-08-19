@@ -55,6 +55,9 @@ interface AudioFile {
   uploaded_at: string
 }
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default function PatientDataPage() {
   const params = useParams()
   const router = useRouter()
@@ -68,8 +71,9 @@ export default function PatientDataPage() {
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null)
   const [audioRetries, setAudioRetries] = useState(0)
 
-  // Carregar dados da consulta
+  // Carregar dados da consulta e blindar caches antigos
   useEffect(() => {
+    try { if (typeof window !== 'undefined') { localStorage.removeItem('patient:view'); sessionStorage.removeItem('patient:view') } } catch {}
     const loadData = async () => {
       try {
         const pagePrefix = '[PatientsPage]'

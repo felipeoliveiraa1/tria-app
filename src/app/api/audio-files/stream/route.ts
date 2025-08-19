@@ -1,3 +1,6 @@
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
@@ -76,7 +79,7 @@ export async function GET(request: NextRequest) {
 
     const headers = new Headers()
     headers.set('Content-Type', audio.mime_type || proxied.headers.get('Content-Type') || 'audio/webm')
-    headers.set('Cache-Control', 'private, max-age=60')
+    headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
     const filename = audio.file_name || audio.filename || 'audio.webm'
     const isDownload = download === '1' || download === 'true'
     headers.set('Content-Disposition', `${isDownload ? 'attachment' : 'inline'}; filename="${filename}"`)

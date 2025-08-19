@@ -1,3 +1,6 @@
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
@@ -226,12 +229,14 @@ export async function POST(request: NextRequest) {
       }
 
       console.log('✅ API - Arquivo de áudio criado no Supabase:', audioFile)
-      return NextResponse.json({
+      const res = NextResponse.json({
         audioFile,
         success: true,
         source: 'supabase',
         storage_url: finalStoragePath
       })
+      res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+      return res
       
     } catch (supabaseError) {
       console.error('❌ API - Erro na conexão com Supabase:', supabaseError)
@@ -311,11 +316,13 @@ export async function GET(request: NextRequest) {
     
     console.log('✅ API - Arquivos de áudio encontrados no Supabase:', data?.length || 0)
     
-    return NextResponse.json({ 
+    const res = NextResponse.json({ 
       audioFiles: data || [], 
       success: true,
       source: 'supabase'
     })
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+    return res
   } catch (error) {
     console.error('❌ API - Erro interno:', error)
     return NextResponse.json(

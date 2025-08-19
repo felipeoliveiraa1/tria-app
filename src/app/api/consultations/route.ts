@@ -153,11 +153,13 @@ export async function POST(request: NextRequest) {
       }
 
       console.log('✅ API - Consulta criada no Supabase:', consultation)
-      return NextResponse.json({
+      const res = NextResponse.json({
         consultation,
         success: true,
         source: 'supabase'
       })
+      res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+      return res
       
     } catch (supabaseError) {
       console.error('❌ API - Erro na conexão com Supabase:', supabaseError)
@@ -325,12 +327,14 @@ export async function PUT(request: NextRequest) {
       }
 
       console.log('✅ API - Consulta temporária atualizada:', tempConsultation)
-      return NextResponse.json({
+      const res = NextResponse.json({
         consultation: tempConsultation,
         success: true,
         source: 'fallback',
         error: supabaseError instanceof Error ? supabaseError.message : 'Erro desconhecido'
       })
+      res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+      return res
     }
 
   } catch (error) {
@@ -425,12 +429,13 @@ export async function GET(request: NextRequest) {
       }
       
       console.log('✅ API - Consultas encontradas no Supabase:', data?.length || 0)
-      
-      return NextResponse.json({ 
+      const res = NextResponse.json({ 
         consultations: data || [], 
         success: true,
         source: 'supabase'
       })
+      res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+      return res
       
     } catch (supabaseError) {
       console.error('❌ API - Erro na conexão com Supabase:', supabaseError)
@@ -438,7 +443,7 @@ export async function GET(request: NextRequest) {
       // Fallback para dados de teste em caso de erro
       console.log('🔄 API - Usando fallback de dados de teste...')
       
-      return NextResponse.json({ 
+      const res = NextResponse.json({ 
         consultations: [
           {
             id: 'fallback-1',
@@ -452,6 +457,8 @@ export async function GET(request: NextRequest) {
         source: 'fallback',
         error: supabaseError instanceof Error ? supabaseError.message : 'Erro desconhecido'
       })
+      res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+      return res
     }
     
   } catch (error) {

@@ -134,11 +134,13 @@ export async function POST(request: NextRequest) {
       }
 
       console.log('✅ API - Transcrição criada no Supabase:', transcription)
-      return NextResponse.json({
+      const res = NextResponse.json({
         transcription,
         success: true,
         source: 'supabase'
       })
+      res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+      return res
       
     } catch (supabaseError) {
       console.error('❌ API - Erro na conexão com Supabase:', supabaseError)
@@ -164,12 +166,14 @@ export async function POST(request: NextRequest) {
       }
 
       console.log('✅ API - Transcrição temporária criada:', tempTranscription)
-      return NextResponse.json({
+      const res = NextResponse.json({
         transcription: tempTranscription,
         success: true,
         source: 'fallback',
         error: supabaseError instanceof Error ? supabaseError.message : 'Erro desconhecido'
       })
+      res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+      return res
     }
 
   } catch (error) {
@@ -227,11 +231,13 @@ export async function GET(request: NextRequest) {
     
     console.log('✅ API - Transcrições encontradas no Supabase:', data?.length || 0)
     
-    return NextResponse.json({ 
+    const res = NextResponse.json({ 
       transcriptions: data || [], 
       success: true,
       source: 'supabase'
     })
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+    return res
   } catch (error) {
     console.error('❌ API - Erro interno:', error)
     return NextResponse.json(

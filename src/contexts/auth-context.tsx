@@ -8,6 +8,7 @@ interface AuthContextType {
   user: User | null
   session: Session | null
   loading: boolean
+  sessionReady?: boolean
   signInWithGoogle: () => Promise<void>
   signInWithEmailPassword: (email: string, password: string) => Promise<void>
   signUpWithEmailPassword: (params: { name: string; email: string; password: string }) => Promise<{ needsEmailConfirmation: boolean }>
@@ -21,6 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [sessionReady, setSessionReady] = useState(false)
 
   useEffect(() => {
     // Verificar sessão atual
@@ -30,15 +32,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error) {
           console.error('Erro ao buscar sessão:', error)
           setLoading(false)
+          setSessionReady(true)
           return
         }
         
         setSession(session)
         setUser(session?.user ?? null)
         setLoading(false)
+        setSessionReady(true)
       } catch (error) {
         console.error('Erro ao buscar sessão:', error)
         setLoading(false)
+        setSessionReady(true)
       }
     }
 
@@ -52,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session)
         setUser(session?.user ?? null)
         setLoading(false)
+        setSessionReady(true)
 
         // Sincronizar/registrar perfil na tabela users ao autenticar
         try {
@@ -203,6 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     session,
     loading,
+    sessionReady,
     signInWithGoogle,
     signInWithEmailPassword,
     signUpWithEmailPassword,

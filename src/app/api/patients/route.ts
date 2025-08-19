@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ API - Pacientes encontrados no Supabase:', patients?.length || 0)
     
-    return NextResponse.json({
+    const res = NextResponse.json({
       patients: patients || [],
       pagination: {
         page,
@@ -104,6 +104,8 @@ export async function GET(request: NextRequest) {
       },
       source: 'supabase'
     })
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+    return res
 
   } catch (error) {
     console.error('❌ API - Erro interno:', error)
