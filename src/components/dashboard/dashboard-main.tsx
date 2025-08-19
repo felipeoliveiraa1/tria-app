@@ -245,32 +245,7 @@ export function DashboardMain({
     patient.email.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  // Enquanto não montou no cliente, evita hidratação instável renderizando placeholder estático
-  if (!mounted) {
-    return (
-      <main className="p-4 lg:p-6 space-y-6 h-full w-full max-w-none pb-16">
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-          <div className="xl:col-span-2">
-            <div className="h-40 rounded-lg bg-muted animate-pulse" />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="h-24 rounded-lg bg-muted animate-pulse" />
-            <div className="h-24 rounded-lg bg-muted animate-pulse" />
-            <div className="h-24 rounded-lg bg-muted animate-pulse" />
-            <div className="h-24 rounded-lg bg-muted animate-pulse" />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="h-28 rounded-lg bg-muted animate-pulse" />
-          <div className="h-28 rounded-lg bg-muted animate-pulse" />
-          <div className="h-28 rounded-lg bg-muted animate-pulse" />
-        </div>
-        <div className="space-y-4 w-full">
-          <div className="h-64 rounded-lg bg-muted animate-pulse" />
-        </div>
-      </main>
-    )
-  }
+  // (placeholder será retornado mais abaixo, após todos os hooks, para não quebrar a ordem de hooks)
 
   // Tela de Nova Consulta
   if (currentView === "nova-consulta") {
@@ -698,15 +673,15 @@ export function DashboardMain({
 
   // Distribuição de consultas na semana (Segunda a Sexta) baseada no banco
   const weeklyDistribution = useMemo(() => {
-    if (!mounted) {
-      return [
-        { day: "Segunda", count: 0, percentage: 0 },
-        { day: "Terça", count: 0, percentage: 0 },
-        { day: "Quarta", count: 0, percentage: 0 },
-        { day: "Quinta", count: 0, percentage: 0 },
-        { day: "Sexta", count: 0, percentage: 0 },
-      ]
-    }
+    // Evitar cálculo até montar, mas sem mudar a ordem de hooks. Retorna valores neutros.
+    const neutral = [
+      { day: "Segunda", count: 0, percentage: 0 },
+      { day: "Terça", count: 0, percentage: 0 },
+      { day: "Quarta", count: 0, percentage: 0 },
+      { day: "Quinta", count: 0, percentage: 0 },
+      { day: "Sexta", count: 0, percentage: 0 },
+    ]
+    if (!mounted) return neutral
     // Nomes dos dias (Segunda a Sexta)
     const dayNames = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
     const counts = [0, 0, 0, 0, 0]
@@ -754,6 +729,33 @@ export function DashboardMain({
     } catch {
       return ''
     }
+  }
+
+  // Placeholder de carregamento seguro após hooks
+  if (!mounted) {
+    return (
+      <main className="p-4 lg:p-6 space-y-6 h-full w-full max-w-none pb-16">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          <div className="xl:col-span-2">
+            <div className="h-40 rounded-lg bg-muted animate-pulse" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="h-24 rounded-lg bg-muted animate-pulse" />
+            <div className="h-24 rounded-lg bg-muted animate-pulse" />
+            <div className="h-24 rounded-lg bg-muted animate-pulse" />
+            <div className="h-24 rounded-lg bg-muted animate-pulse" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="h-28 rounded-lg bg-muted animate-pulse" />
+          <div className="h-28 rounded-lg bg-muted animate-pulse" />
+          <div className="h-28 rounded-lg bg-muted animate-pulse" />
+        </div>
+        <div className="space-y-4 w-full">
+          <div className="h-64 rounded-lg bg-muted animate-pulse" />
+        </div>
+      </main>
+    )
   }
 
   return (
