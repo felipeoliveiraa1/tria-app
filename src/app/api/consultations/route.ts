@@ -386,18 +386,30 @@ export async function GET(request: NextRequest) {
       
       console.log('✅ API - Cliente Supabase criado')
 
-      // Verificar se o usuário está autenticado
+      // Verificar autenticação via Authorization: Bearer ou cookies
       console.log('🔄 API - Verificando autenticação...')
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      
-      // Para desenvolvimento, usar um doctor_id padrão se não houver usuário autenticado
-      let doctorId = 'a5a278fe-dfff-4105-9b3f-a8f515d7ced8' // ID válido que existe na tabela users
-      
-      if (!authError && user) {
-        doctorId = user.id
-        console.log('✅ API - Usuário autenticado:', user.email)
-      } else {
-        console.log('⚠️ API - Usuário não autenticado, usando ID padrão para desenvolvimento:', doctorId)
+      const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+      let db = supabase
+      let doctorId: string | null = null
+      if (authHeader?.toLowerCase().startsWith('bearer ')) {
+        const token = authHeader.split(' ')[1]
+        if (token) {
+          const direct = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            { global: { headers: { Authorization: `Bearer ${token}` } } }
+          )
+          db = direct
+          const { data: u } = await direct.auth.getUser(token)
+          doctorId = u.user?.id ?? null
+        }
+      }
+      if (!doctorId) {
+        const { data: u, error: e } = await supabase.auth.getUser()
+        if (!e && u?.user) doctorId = u.user.id
+      }
+      if (!doctorId) {
+        return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
       }
 
       const { searchParams } = new URL(request.url)
@@ -406,7 +418,7 @@ export async function GET(request: NextRequest) {
       
       console.log('🔄 API - Buscando consultas no Supabase:', { patientName, patientId, doctorId })
       
-      let query = supabase
+      let query = db
         .from('consultations')
         .select('*')
         .eq('doctor_id', doctorId) // Filtrar apenas consultas do médico autenticado
