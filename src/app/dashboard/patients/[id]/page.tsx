@@ -182,6 +182,7 @@ export default function PatientDataPage() {
           console.error(pagePrefix, 'Exceção ao buscar transcrição:', error)
         }
 
+        
         // Buscar arquivo de áudio usando a API correta
         const fetchAudio = async () => {
           try {
