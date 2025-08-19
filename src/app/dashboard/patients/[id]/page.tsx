@@ -72,7 +72,6 @@ export default function PatientDataPage() {
 
   // Carregar dados da consulta e blindar caches antigos
   useEffect(() => {
-    if (!sessionReady) return
     try { if (typeof window !== 'undefined') { localStorage.removeItem('patient:view'); sessionStorage.removeItem('patient:view') } } catch {}
     const loadData = async () => {
       try {
@@ -339,6 +338,12 @@ export default function PatientDataPage() {
   useEffect(() => {
     console.log('🔄 useEffect do áudio executado, audioFile:', audioFile)
     
+    if (!audioFile || !(audioFile.file_url || audioFile.storage_path)) {
+      console.warn('audioFile inválido ou sem URL:', audioFile)
+      setAudioElement(null)
+      return
+    }
+
     if (audioFile && (audioFile.file_url || audioFile.storage_path)) {
       console.log('🔍 Analisando URL do áudio:', audioFile.file_url)
       console.log('🔍 Tipo da URL:', typeof audioFile.file_url)
@@ -477,9 +482,6 @@ export default function PatientDataPage() {
         console.log('⚠️ URL de streaming não definida')
         setAudioElement(null)
       }
-    } else {
-      console.log('❌ audioFile inválido ou sem URL:', audioFile)
-      setAudioElement(null)
     }
   }, [audioFile])
 
@@ -560,6 +562,18 @@ export default function PatientDataPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-foreground">Carregando ficha do paciente...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Se após timeout não houver consulta ou áudio, renderiza estado vazio amigável
+  if (!consultation && !isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-foreground">Não foi possível carregar a ficha desta consulta.</p>
+          <Button onClick={() => router.refresh()} className="mt-4">Tentar novamente</Button>
         </div>
       </div>
     )
