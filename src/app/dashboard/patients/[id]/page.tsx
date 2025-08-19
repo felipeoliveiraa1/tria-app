@@ -75,9 +75,12 @@ export default function PatientDataPage() {
         console.log('Carregando dados para consulta:', consultationId)
         
         // Buscar dados da consulta
-        const token = (await import('@/lib/supabase')).supabase.auth.getSession().then(r=>r.data.session?.access_token).catch(()=>undefined)
-        const authHeader = token ? { Authorization: `Bearer ${await token}` } : undefined
-        const consultationResponse = await fetch(`/api/consultations/${consultationId}`, { headers: authHeader })
+        const { supabase } = await import('@/lib/supabase')
+        const { data } = await supabase.auth.getSession()
+        const token = data.session?.access_token
+        const headers: Record<string, string> = { 'cache-control': 'no-store' }
+        if (token) headers['Authorization'] = `Bearer ${token}`
+        const consultationResponse = await fetch(`/api/consultations/${consultationId}`, { headers })
         if (consultationResponse.ok) {
           const consultationData = await consultationResponse.json()
           console.log('Dados da consulta carregados:', consultationData)
@@ -86,7 +89,7 @@ export default function PatientDataPage() {
           console.error('Erro ao buscar consulta:', consultationResponse.status)
           // Tentar buscar na lista geral de consultas
           try {
-            const allConsultationsResponse = await fetch('/api/consultations')
+            const allConsultationsResponse = await fetch('/api/consultations', { headers })
             if (allConsultationsResponse.ok) {
               const allConsultationsData = await allConsultationsResponse.json()
               console.log('Todas as consultas disponíveis:', allConsultationsData)
@@ -149,7 +152,7 @@ export default function PatientDataPage() {
         // Buscar transcrição usando a API correta
         try {
           console.log('🔄 Buscando transcrição para consulta:', consultationId)
-          const transcriptionResponse = await fetch(`/api/transcriptions?consultation_id=${consultationId}`, { headers: authHeader })
+          const transcriptionResponse = await fetch(`/api/transcriptions?consultation_id=${consultationId}`, { headers })
           if (transcriptionResponse.ok) {
             const transcriptionData = await transcriptionResponse.json()
             console.log('✅ Dados da transcrição recebidos:', transcriptionData)
@@ -169,7 +172,7 @@ export default function PatientDataPage() {
         // Buscar arquivo de áudio usando a API correta
         const fetchAudio = async () => {
           try {
-            const audioResponse = await fetch(`/api/audio-files?consultation_id=${consultationId}`, { headers: authHeader })
+            const audioResponse = await fetch(`/api/audio-files?consultation_id=${consultationId}`, { headers })
             if (audioResponse.ok) {
               const audioData = await audioResponse.json()
               console.log('Dados do áudio:', audioData)
@@ -214,8 +217,11 @@ export default function PatientDataPage() {
     let cancelled = false
     const run = async () => {
       try {
-        const token = await import('@/lib/supabase').then(m => m.supabase.auth.getSession()).then(r => r.data.session?.access_token).catch(() => undefined)
-        const headers = token ? { Authorization: `Bearer ${token}` } as any : undefined
+        const { supabase } = await import('@/lib/supabase')
+        const { data } = await supabase.auth.getSession()
+        const token = data.session?.access_token
+        const headers: Record<string, string> = { 'cache-control': 'no-store' }
+        if (token) headers['Authorization'] = `Bearer ${token}`
         const audioResponse = await fetch(`/api/audio-files?consultation_id=${consultationId}`, { headers })
         if (cancelled) return
         if (audioResponse.ok) {
