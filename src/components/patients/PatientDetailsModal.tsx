@@ -59,6 +59,8 @@ interface Transcription {
   confidence: number
   processing_time: number
   created_at: string
+  language?: string
+  model_used?: string
 }
 
 interface AudioFile {
