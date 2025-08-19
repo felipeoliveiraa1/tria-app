@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import dynamic from "next/dynamic"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -64,6 +64,11 @@ export function DashboardMain({
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null)
   const [showPatientModal, setShowPatientModal] = useState(false)
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Logs de debug para verificar se os hooks estão funcionando
   useEffect(() => {
@@ -261,7 +266,7 @@ export function DashboardMain({
   // Tela de Consultas
   if (currentView === "consultas") {
     return (
-      <main className="p-6 space-y-6 h-full w-full max-w-none">
+      <main className="p-6 space-y-6 h-full w-full max-w-none pb-16">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Consultas</h1>
@@ -317,7 +322,7 @@ export function DashboardMain({
                 const patient = patients.find(p => p.id === consulta.patient_id)
                 const patientName = consulta.patient_name || patient?.name || "Paciente não encontrado"
                 const consultationDate = consulta.created_at
-                const consultationTime = new Date(consulta.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                const consultationTime = formatTimeBR(consulta.created_at)
                 const consultationType = consulta.consultation_type || "PRESENCIAL"
                 
                 return (
@@ -335,7 +340,7 @@ export function DashboardMain({
                             <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                               <span className="flex items-center">
                                 <Calendar className="h-4 w-4 mr-1" />
-                                {consultationDate ? new Date(consultationDate).toLocaleDateString('pt-BR') : "Data não definida"}
+                                {consultationDate ? formatDateBR(consultationDate) : "Data não definida"}
                               </span>
                               <span className="flex items-center">
                                 <Clock className="h-4 w-4 mr-1" />
@@ -411,7 +416,7 @@ export function DashboardMain({
   // Tela de Pacientes
   if (currentView === "pacientes") {
     return (
-      <main className="p-6 space-y-6 h-full w-full max-w-none">
+      <main className="p-6 space-y-6 h-full w-full max-w-none pb-16">
         <PatientsPage />
       </main>
     )
@@ -428,7 +433,7 @@ export function DashboardMain({
   // Tela de Configurações
   if (currentView === "configuracoes") {
     return (
-      <main className="p-6 space-y-6 h-full w-full max-w-none">
+      <main className="p-6 space-y-6 h-full w-full max-w-none pb-16">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Configurações</h1>
           <p className="text-muted-foreground">Personalize suas preferências do sistema</p>
@@ -664,8 +669,68 @@ export function DashboardMain({
     }
   }
 
+  // Distribuição de consultas na semana (Segunda a Sexta) baseada no banco
+  const weeklyDistribution = useMemo(() => {
+    if (!mounted) {
+      return [
+        { day: "Segunda", count: 0, percentage: 0 },
+        { day: "Terça", count: 0, percentage: 0 },
+        { day: "Quarta", count: 0, percentage: 0 },
+        { day: "Quinta", count: 0, percentage: 0 },
+        { day: "Sexta", count: 0, percentage: 0 },
+      ]
+    }
+    // Nomes dos dias (Segunda a Sexta)
+    const dayNames = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
+    const counts = [0, 0, 0, 0, 0]
+
+    // Início da semana (segunda-feira) à meia-noite
+    const now = new Date()
+    const current = new Date(now)
+    current.setHours(0, 0, 0, 0)
+    const day = current.getDay() // 0 = domingo, 1 = segunda, ... 6 = sábado
+    const diffToMonday = (day + 6) % 7
+    const weekStart = new Date(current)
+    weekStart.setDate(current.getDate() - diffToMonday)
+    const nextWeekStart = new Date(weekStart)
+    nextWeekStart.setDate(weekStart.getDate() + 7)
+
+    for (const c of consultations) {
+      const rawDate = (c as any).scheduled_date || c.created_at
+      if (!rawDate) continue
+      const d = new Date(rawDate)
+      if (d < weekStart || d >= nextWeekStart) continue
+      const dow = d.getDay() // 1..5 interessam
+      if (dow >= 1 && dow <= 5) {
+        counts[dow - 1] += 1
+      }
+    }
+
+    const maxCount = Math.max(1, ...counts)
+    return counts.map((count, i) => ({
+      day: dayNames[i],
+      count,
+      percentage: Math.round((count / maxCount) * 100)
+    }))
+  }, [consultations, mounted])
+
+  const formatTimeBR = (value: string | number | Date) => {
+    try {
+      return new Date(value).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+    } catch {
+      return ''
+    }
+  }
+  const formatDateBR = (value: string | number | Date) => {
+    try {
+      return new Date(value).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+    } catch {
+      return ''
+    }
+  }
+
   return (
-    <main className="p-4 lg:p-6 space-y-6 h-full w-full max-w-none">
+    <main className="p-4 lg:p-6 space-y-6 h-full w-full max-w-none pb-16">
       {/* Saudações + KPIs lado a lado */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <div className="xl:col-span-2">
@@ -740,7 +805,7 @@ export function DashboardMain({
                       <div className="flex items-center space-x-3">
                         <div className="w-2 h-2 bg-primary rounded-full"></div>
                         <span className="text-sm font-medium text-foreground">
-                          {new Date(consultation.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          {formatTimeBR(consultation.created_at)}
                         </span>
                         <span className="text-sm text-foreground-secondary">
                           {patient?.name || "Paciente não encontrado"}
@@ -781,13 +846,7 @@ export function DashboardMain({
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {[
-                  { day: "Segunda", count: 15, percentage: 25 },
-                  { day: "Terça", count: 18, percentage: 30 },
-                  { day: "Quarta", count: 12, percentage: 20 },
-                  { day: "Quinta", count: 20, percentage: 33 },
-                  { day: "Sexta", count: 8, percentage: 13 },
-                ].map((item, index) => (
+                {weeklyDistribution.map((item, index) => (
                   <div key={index} className="flex items-center justify-between">
                     <span className="text-sm text-foreground-secondary">{item.day}</span>
                     <div className="flex items-center space-x-2">
@@ -831,7 +890,7 @@ export function DashboardMain({
                           <div className="flex items-center space-x-3">
                             <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                             <span className="text-sm font-medium text-foreground">
-                              {new Date(consultation.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                              {formatTimeBR(consultation.created_at)}
                             </span>
                             <span className="text-sm text-foreground-secondary">
                               {patient?.name || "Paciente não encontrado"}
@@ -850,50 +909,7 @@ export function DashboardMain({
         </div>
       </div>
 
-      {/* Extra Content to Fill Remaining Space */}
-      <div className="space-y-4 w-full">
-        <h3 className="text-xl font-semibold text-foreground">Métricas de Qualidade</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-          <Card className="card-hover w-full">
-            <CardHeader>
-              <CardTitle>Satisfação do Paciente</CardTitle>
-              <CardDescription>Média das avaliações</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-primary mb-2">4.8/5.0</div>
-                <div className="text-sm text-muted-foreground">Baseado em 156 avaliações</div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="card-hover w-full">
-            <CardHeader>
-              <CardTitle>Tempo de Resposta</CardTitle>
-              <CardDescription>Média de atendimento</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-blue-500 mb-2">2.3 min</div>
-                <div className="text-sm text-muted-foreground">Tempo médio por consulta</div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="card-hover w-full">
-            <CardHeader>
-              <CardTitle>Taxa de Sucesso</CardTitle>
-              <CardDescription>Consultas completadas</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-green-500 mb-2">98.5%</div>
-                <div className="text-sm text-muted-foreground">Consultas bem-sucedidas</div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      
 
       {/* Painel de Gravação Lateral */}
       {recordingPanelOpen && currentRecordingId && (

@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Logo } from "@/components/ui/logo"
 
@@ -7,7 +8,7 @@ interface GreetingCardProps {
   userName?: string | null
 }
 
-function getGreeting() {
+function computeGreeting() {
   const h = new Date().getHours()
   if (h < 12) return "Bom dia"
   if (h < 18) return "Boa tarde"
@@ -15,7 +16,11 @@ function getGreeting() {
 }
 
 export function GreetingCard({ userName }: GreetingCardProps) {
-  const greeting = getGreeting()
+  // Evitar Date na renderização inicial (SSR) para não causar mismatch
+  const [greeting, setGreeting] = useState<string>("Olá")
+  useEffect(() => {
+    setGreeting(computeGreeting())
+  }, [])
   return (
     <Card className="border-border shadow-sm relative overflow-hidden h-full">
       <CardContent className="p-6 sm:p-7 h-full flex flex-col justify-center">
