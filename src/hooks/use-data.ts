@@ -2,6 +2,23 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase, Patient, Consultation, User } from '@/lib/supabase'
 import { useAuth } from '@/contexts/auth-context'
 
+async function fetchJSON(url: string, init?: RequestInit) {
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  const headers: Record<string, string> = { 'cache-control': 'no-store' }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  for (let i = 0; i < 2; i++) {
+    const res = await fetch(url, { cache: 'no-store', ...init, headers: { ...headers, ...(init?.headers as any) } })
+    if (res.ok) return res.json()
+    if (res.status === 401 || res.status === 429) {
+      await new Promise(r => setTimeout(r, 200 + Math.random()*400))
+      continue
+    }
+    throw new Error(`${res.status} ${res.statusText}`)
+  }
+  throw new Error('Falha após tentativas')
+}
+
 // Hook para buscar pacientes
 export function usePatients() {
   const [patients, setPatients] = useState<Patient[]>([])
@@ -15,29 +32,14 @@ export function usePatients() {
       try {
         setLoading(true)
         console.log('🔄 usePatients - Iniciando busca de pacientes no Supabase...')
-        
-        if (!supabase) {
-          throw new Error('Supabase não está configurado')
-        }
         if (!user?.id) {
           console.log('👤 usePatients - Usuário não autenticado, retornando lista vazia')
           setPatients([])
           return
         }
-
-        const { data, error: supabaseError } = await supabase
-          .from('patients')
-          .select('*')
-          .eq('doctor_id', user?.id || '')
-          .order('created_at', { ascending: false })
-
-        if (supabaseError) {
-          console.error('❌ usePatients - Erro no Supabase:', supabaseError)
-          throw supabaseError
-        }
-
-        console.log('✅ usePatients - Pacientes carregados do Supabase:', data?.length || 0, data)
-        setPatients(data || [])
+        const d = await fetchJSON(`/api/patients?page=1&limit=100`)
+        console.log('✅ usePatients - Pacientes via API:', d?.patients?.length || 0)
+        setPatients(d?.patients || [])
       } catch (err) {
         console.error('❌ usePatients - Erro:', err)
         setError(err instanceof Error ? err.message : 'Erro ao buscar pacientes')
@@ -174,29 +176,14 @@ export function useConsultations() {
       try {
         setLoading(true)
         console.log('🔄 useConsultations - Iniciando busca de consultas no Supabase...')
-        
-        if (!supabase) {
-          throw new Error('Supabase não está configurado')
-        }
         if (!user?.id) {
           console.log('👤 useConsultations - Usuário não autenticado, retornando lista vazia')
           setConsultations([])
           return
         }
-
-        const { data, error: supabaseError } = await supabase
-          .from('consultations')
-          .select('*')
-          .eq('doctor_id', user?.id || '')
-          .order('created_at', { ascending: false })
-
-        if (supabaseError) {
-          console.error('❌ useConsultations - Erro no Supabase:', supabaseError)
-          throw supabaseError
-        }
-
-        console.log('✅ useConsultations - Consultas carregadas do Supabase:', data?.length || 0, data)
-        setConsultations(data || [])
+        const d = await fetchJSON(`/api/consultations`)
+        console.log('✅ useConsultations - Consultas via API:', d?.consultations?.length || 0)
+        setConsultations(d?.consultations || [])
       } catch (err) {
         console.error('❌ useConsultations - Erro:', err)
         setError(err instanceof Error ? err.message : 'Erro ao buscar consultas')
@@ -326,22 +313,9 @@ export function useConsultations() {
     setError(null)
     
     try {
-      if (!supabase) {
-        throw new Error('Supabase não está configurado')
-      }
-
-      const { data, error: supabaseError } = await supabase
-        .from('consultations')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (supabaseError) {
-        console.error('❌ useConsultations - Erro no recarregamento:', supabaseError)
-        throw supabaseError
-      }
-
-      console.log('✅ useConsultations - Recarregamento do Supabase:', data?.length || 0, data)
-      setConsultations(data || [])
+      const d = await fetchJSON(`/api/consultations`)
+      console.log('✅ useConsultations - Recarregado via API:', d?.consultations?.length || 0)
+      setConsultations(d?.consultations || [])
     } catch (err) {
       console.error('❌ useConsultations - Erro no recarregamento:', err)
       setError(err instanceof Error ? err.message : 'Erro ao recarregar consultas')
@@ -365,87 +339,23 @@ export function useConsultations() {
 
 // Hook para buscar estatísticas
 export function useStats() {
-  const [stats, setStats] = useState({
-    totalConsultations: 0,
-    totalPatients: 0,
-    todayConsultations: 0,
-    productivity: 0
-  })
+  const { consultations, loading: consultationsLoading } = useConsultations()
+  const { patients, loading: patientsLoading } = usePatients()
+  const [stats, setStats] = useState({ totalConsultations: 0, totalPatients: 0, todayConsultations: 0, productivity: 0 })
   const [loading, setLoading] = useState(true)
-  const { user } = useAuth()
 
   useEffect(() => {
-    // Se não houver usuário, finalize loading e mantenha zeros
-    if (!user) {
-      setStats({
-        totalConsultations: 0,
-        totalPatients: 0,
-        todayConsultations: 0,
-        productivity: 0
-      })
-      setLoading(false)
-      return
-    }
-
-    let cancelled = false
-    const fetchStats = async () => {
-      try {
-        setLoading(true)
-        
-        // Buscar total de consultas
-        const { count: totalConsultations } = await supabase
-          .from('consultations')
-          .select('*', { count: 'exact', head: true })
-          .eq('doctor_id', user.id)
-
-        // Buscar total de pacientes
-        const { count: totalPatients } = await supabase
-          .from('patients')
-          .select('*', { count: 'exact', head: true })
-          .eq('doctor_id', user.id)
-
-        // Buscar consultas de hoje
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        const todayIso = today.toISOString()
-        const { count: todayConsultations } = await supabase
-          .from('consultations')
-          .select('*', { count: 'exact', head: true })
-          .eq('doctor_id', user.id)
-          // Compatível com schemas usando created_at OU scheduled_date
-          .or(`created_at.gte.${todayIso},scheduled_date.gte.${todayIso}`)
-
-        // Calcular produtividade (consultas concluídas / total)
-        const { count: completedConsultations } = await supabase
-          .from('consultations')
-          .select('*', { count: 'exact', head: true })
-          .eq('doctor_id', user.id)
-          .eq('status', 'COMPLETED')
-
-        const totalAll = totalConsultations ?? 0
-        const completedAll = completedConsultations ?? 0
-        const productivity = totalAll > 0 
-          ? Math.round((completedAll) / (totalAll) * 100)
-          : 0
-
-        if (!cancelled) {
-          setStats({
-            totalConsultations: totalAll,
-            totalPatients: totalPatients ?? 0,
-            todayConsultations: todayConsultations ?? 0,
-            productivity
-          })
-        }
-      } catch (error) {
-        console.error('Erro ao buscar estatísticas:', error)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    fetchStats()
-    return () => { cancelled = true }
-  }, [user?.id])
+    const today = new Date(); today.setHours(0,0,0,0)
+    const todayCount = consultations.filter(c => {
+      const d = c.created_at ? new Date(c.created_at) : null
+      return d && d >= today
+    }).length
+    const completed = consultations.filter(c => c.status === 'COMPLETED').length
+    const total = consultations.length
+    const productivity = total > 0 ? Math.round((completed / total) * 100) : 0
+    setStats({ totalConsultations: total, totalPatients: patients.length, todayConsultations: todayCount, productivity })
+    setLoading(consultationsLoading || patientsLoading)
+  }, [consultations, patients, consultationsLoading, patientsLoading])
 
   return { stats, loading }
 }
