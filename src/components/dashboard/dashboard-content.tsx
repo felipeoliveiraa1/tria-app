@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useAuth } from "@/contexts/auth-context"
 import { DashboardSidebar } from "./dashboard-sidebar"
 import { DashboardHeader } from "./dashboard-header"
 import { DashboardMain } from "./dashboard-main"
@@ -8,10 +9,18 @@ import { DashboardMain } from "./dashboard-main"
 type DashboardView = "main" | "nova-consulta" | "consultas" | "pacientes" | "configuracoes" | "gravacao"
 
 export function DashboardContent() {
+  const { sessionReady } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [currentView, setCurrentView] = useState<DashboardView>("main")
   const [recordingPanelOpen, setRecordingPanelOpen] = useState(false)
   const [currentRecordingId, setCurrentRecordingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    // apenas para garantir que sub-views não tentem buscar sem sessão
+    if (!sessionReady) {
+      setCurrentView("main")
+    }
+  }, [sessionReady])
 
   const handleStartRecording = (consultationId: string) => {
     setCurrentRecordingId(consultationId)

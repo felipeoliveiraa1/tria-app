@@ -94,6 +94,17 @@ export default function PatientDataPage() {
           console.log('Dados da consulta carregados:', consultationData)
           setConsultation(consultationData.consultation)
         } else {
+          if (consultationResponse.status === 401) {
+            console.warn(pagePrefix, '401 não autenticado. Recarregando token e reintentando...')
+            try {
+              await supabase.auth.getSession()
+            } catch {}
+            const retry = await fetch(`/api/consultations/${consultationId}`, { headers, cache: 'no-store' })
+            if (retry.ok) {
+              const data = await retry.json()
+              setConsultation(data.consultation)
+            }
+          }
           let body: any = null
           try { body = await consultationResponse.json() } catch {}
           console.error(pagePrefix, 'Erro ao buscar consulta por id', { status: consultationResponse.status, body })
@@ -177,6 +188,13 @@ export default function PatientDataPage() {
             } else {
               console.log('⚠️ Nenhuma transcrição encontrada para esta consulta')
             }
+          } else if (transcriptionResponse.status === 401) {
+            try { await supabase.auth.getSession() } catch {}
+            const retryTr = await fetch(`/api/transcriptions?consultation_id=${consultationId}`, { headers, cache: 'no-store' })
+            if (retryTr.ok) {
+              const d = await retryTr.json()
+              if (d.transcriptions && d.transcriptions.length > 0) setTranscription(d.transcriptions[0])
+            }
           } else {
             let trBody: any = null
             try { trBody = await transcriptionResponse.json() } catch {}
@@ -200,6 +218,16 @@ export default function PatientDataPage() {
               if (audioData.audioFiles && audioData.audioFiles.length > 0) {
                 setAudioFile(audioData.audioFiles[0])
                 return true
+              }
+            } else if (audioResponse.status === 401) {
+              try { await supabase.auth.getSession() } catch {}
+              const retryAudio = await fetch(`/api/audio-files?consultation_id=${consultationId}`, { headers, cache: 'no-store' })
+              if (retryAudio.ok) {
+                const audioData = await retryAudio.json()
+                if (audioData.audioFiles && audioData.audioFiles.length > 0) {
+                  setAudioFile(audioData.audioFiles[0])
+                  return true
+                }
               }
             }
           } catch (err) {
@@ -233,6 +261,8 @@ export default function PatientDataPage() {
     }
 
     loadData()
+    const timeout = setTimeout(() => setIsLoading(false), 10000)
+    return () => clearTimeout(timeout)
   }, [consultationId, sessionReady])
 
   // Polling leve para o áudio (aguarda upload/assinatura)
@@ -246,7 +276,7 @@ export default function PatientDataPage() {
         const token = data.session?.access_token
         const headers: Record<string, string> = { 'cache-control': 'no-store' }
         if (token) headers['Authorization'] = `Bearer ${token}`
-        const audioResponse = await fetch(`/api/audio-files?consultation_id=${consultationId}`, { headers })
+        const audioResponse = await fetch(`/api/audio-files?consultation_id=${consultationId}`, { headers, cache: 'no-store' })
         if (cancelled) return
         if (audioResponse.ok) {
           const d = await audioResponse.json()

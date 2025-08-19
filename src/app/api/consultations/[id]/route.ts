@@ -69,7 +69,7 @@ export async function GET(request: Request) {
       },
     })
 
-    // Suporte a Authorization: Bearer
+    // Suporte a Authorization: Bearer OU cookies
     const authHeader = (request as any).headers?.get?.('authorization') || (request as any).headers?.get?.('Authorization')
     let db = supabase
     let doctorId: string | null = null
@@ -81,6 +81,10 @@ export async function GET(request: Request) {
         const { data: u } = await direct.auth.getUser(token)
         doctorId = u.user?.id ?? null
       }
+    }
+    if (!doctorId) {
+      const { data: u, error: e } = await supabase.auth.getUser()
+      if (!e && u?.user) doctorId = u.user.id
     }
     if (!doctorId) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
@@ -105,7 +109,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Consulta não encontrada' }, { status: 404 })
     }
 
-    return NextResponse.json({ consultation, success: true, source: 'supabase' })
+    const res = NextResponse.json({ consultation, success: true, source: 'supabase' })
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+    return res
   } catch (error) {
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
