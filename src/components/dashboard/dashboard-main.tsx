@@ -69,6 +69,78 @@ export function DashboardMain({
   useEffect(() => {
     setMounted(true)
   }, [])
+  // Carregamento dinâmico da página de "Nova Consulta" (definido fora do condicional)
+  const NovaConsultaPage = dynamic(() => import("@/app/dashboard/nova-consulta/page"), {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    )
+  })
+
+
+  // Helpers de formatação com timezone fixo para evitar mismatch SSR/CSR
+  const formatTimeBR = (value: string | number | Date) => {
+    try {
+      return new Date(value).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+    } catch {
+      return ''
+    }
+  }
+  const formatDateBR = (value: string | number | Date) => {
+    try {
+      return new Date(value).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+    } catch {
+      return ''
+    }
+  }
+
+  // Distribuição de consultas na semana (Segunda a Sexta) baseada no banco
+  const weeklyDistribution = useMemo(() => {
+    const neutral = [
+      { day: "Segunda", count: 0, percentage: 0 },
+      { day: "Terça", count: 0, percentage: 0 },
+      { day: "Quarta", count: 0, percentage: 0 },
+      { day: "Quinta", count: 0, percentage: 0 },
+      { day: "Sexta", count: 0, percentage: 0 },
+    ]
+    if (!mounted) return neutral
+
+    const dayNames = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
+    const counts = [0, 0, 0, 0, 0]
+
+    const now = new Date()
+    const current = new Date(now)
+    current.setHours(0, 0, 0, 0)
+    const day = current.getDay()
+    const diffToMonday = (day + 6) % 7
+    const weekStart = new Date(current)
+    weekStart.setDate(current.getDate() - diffToMonday)
+    const nextWeekStart = new Date(weekStart)
+    nextWeekStart.setDate(weekStart.getDate() + 7)
+
+    for (const c of consultations) {
+      const rawDate = (c as any).scheduled_date || c.created_at
+      if (!rawDate) continue
+      const d = new Date(rawDate)
+      if (d < weekStart || d >= nextWeekStart) continue
+      const dow = d.getDay()
+      if (dow >= 1 && dow <= 5) {
+        counts[dow - 1] += 1
+      }
+    }
+
+    const maxCount = Math.max(1, ...counts)
+    return counts.map((count, i) => ({
+      day: dayNames[i],
+      count,
+      percentage: Math.round((count / maxCount) * 100)
+    }))
+  }, [consultations, mounted])
 
   // Logs de debug para verificar se os hooks estão funcionando
   useEffect(() => {
@@ -249,19 +321,6 @@ export function DashboardMain({
 
   // Tela de Nova Consulta
   if (currentView === "nova-consulta") {
-    // Importar dinamicamente para evitar problemas de SSR
-    const NovaConsultaPage = dynamic(() => import("@/app/dashboard/nova-consulta/page"), {
-      ssr: false,
-      loading: () => (
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Carregando...</p>
-          </div>
-        </div>
-      )
-    })
-    
     return <NovaConsultaPage />
   }
 
@@ -671,65 +730,7 @@ export function DashboardMain({
     }
   }
 
-  // Distribuição de consultas na semana (Segunda a Sexta) baseada no banco
-  const weeklyDistribution = useMemo(() => {
-    // Evitar cálculo até montar, mas sem mudar a ordem de hooks. Retorna valores neutros.
-    const neutral = [
-      { day: "Segunda", count: 0, percentage: 0 },
-      { day: "Terça", count: 0, percentage: 0 },
-      { day: "Quarta", count: 0, percentage: 0 },
-      { day: "Quinta", count: 0, percentage: 0 },
-      { day: "Sexta", count: 0, percentage: 0 },
-    ]
-    if (!mounted) return neutral
-    // Nomes dos dias (Segunda a Sexta)
-    const dayNames = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
-    const counts = [0, 0, 0, 0, 0]
-
-    // Início da semana (segunda-feira) à meia-noite
-    const now = new Date()
-    const current = new Date(now)
-    current.setHours(0, 0, 0, 0)
-    const day = current.getDay() // 0 = domingo, 1 = segunda, ... 6 = sábado
-    const diffToMonday = (day + 6) % 7
-    const weekStart = new Date(current)
-    weekStart.setDate(current.getDate() - diffToMonday)
-    const nextWeekStart = new Date(weekStart)
-    nextWeekStart.setDate(weekStart.getDate() + 7)
-
-    for (const c of consultations) {
-      const rawDate = (c as any).scheduled_date || c.created_at
-      if (!rawDate) continue
-      const d = new Date(rawDate)
-      if (d < weekStart || d >= nextWeekStart) continue
-      const dow = d.getDay() // 1..5 interessam
-      if (dow >= 1 && dow <= 5) {
-        counts[dow - 1] += 1
-      }
-    }
-
-    const maxCount = Math.max(1, ...counts)
-    return counts.map((count, i) => ({
-      day: dayNames[i],
-      count,
-      percentage: Math.round((count / maxCount) * 100)
-    }))
-  }, [consultations, mounted])
-
-  const formatTimeBR = (value: string | number | Date) => {
-    try {
-      return new Date(value).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
-    } catch {
-      return ''
-    }
-  }
-  const formatDateBR = (value: string | number | Date) => {
-    try {
-      return new Date(value).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
-    } catch {
-      return ''
-    }
-  }
+  // (duplicatas removidas)
 
   // Placeholder de carregamento seguro após hooks
   if (!mounted) {
