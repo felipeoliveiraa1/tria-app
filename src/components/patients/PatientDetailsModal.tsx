@@ -53,6 +53,7 @@ interface Consultation {
 
 interface Transcription {
   id: string
+  consultation_id?: string
   raw_text: string
   summary: string
   confidence: number
