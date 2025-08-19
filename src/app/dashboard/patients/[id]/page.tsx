@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
+import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -55,12 +56,10 @@ interface AudioFile {
   uploaded_at: string
 }
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
-
 export default function PatientDataPage() {
   const params = useParams()
   const router = useRouter()
+  const { user, sessionReady } = useAuth()
   const consultationId = params.id as string
   
   const [isLoading, setIsLoading] = useState(true)
@@ -73,6 +72,7 @@ export default function PatientDataPage() {
 
   // Carregar dados da consulta e blindar caches antigos
   useEffect(() => {
+    if (!sessionReady) return
     try { if (typeof window !== 'undefined') { localStorage.removeItem('patient:view'); sessionStorage.removeItem('patient:view') } } catch {}
     const loadData = async () => {
       try {
@@ -233,7 +233,7 @@ export default function PatientDataPage() {
     }
 
     loadData()
-  }, [consultationId])
+  }, [consultationId, sessionReady])
 
   // Polling leve para o áudio (aguarda upload/assinatura)
   useEffect(() => {
@@ -524,7 +524,7 @@ export default function PatientDataPage() {
     }
   }
 
-  if (isLoading) {
+  if (!sessionReady || isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
