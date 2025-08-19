@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent } from "@/components/ui/tabs"
+import { Select, SelectItem } from "@/components/ui/select"
 import { 
   User, 
   Calendar, 
@@ -24,6 +25,7 @@ import {
   FileAudio2,
   MessageSquare
 } from "lucide-react"
+import { supabase } from "@/lib/supabase"
 
 interface Patient {
   id: string
@@ -71,14 +73,17 @@ interface PatientDetailsModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   patient: Patient | null
+  initialConsultationId?: string
 }
 
-export function PatientDetailsModal({ open, onOpenChange, patient }: PatientDetailsModalProps) {
+export function PatientDetailsModal({ open, onOpenChange, patient, initialConsultationId }: PatientDetailsModalProps) {
   const [consultations, setConsultations] = useState<Consultation[]>([])
   const [transcriptions, setTranscriptions] = useState<Transcription[]>([])
   const [audioFiles, setAudioFiles] = useState<AudioFile[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState("overview")
+  const [selectedConsultationId, setSelectedConsultationId] = useState<string | null>(initialConsultationId ?? null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   // Carregar dados do paciente quando o modal abrir
   useEffect(() => {
@@ -87,33 +92,74 @@ export function PatientDetailsModal({ open, onOpenChange, patient }: PatientDeta
     }
   }, [open, patient])
 
+  useEffect(() => {
+    if (!selectedConsultationId && consultations.length > 0) {
+      setSelectedConsultationId(consultations[0].id)
+    }
+  }, [consultations, selectedConsultationId])
+
+  // Garantir que o áudio pare/atualize ao trocar de ficha/consulta
+  useEffect(() => {
+    const el = audioRef.current
+    if (!el) return
+    try {
+      el.pause()
+      el.src = selectedConsultationId ? `/api/audio-files/stream?consultation_id=${selectedConsultationId}` : ''
+      if (selectedConsultationId) el.load()
+    } catch {}
+  }, [selectedConsultationId, patient?.id, open])
+
+  useEffect(() => {
+    return () => {
+      const el = audioRef.current
+      try { if (el) { el.pause(); el.src = '' } } catch {}
+    }
+  }, [])
+
   const loadPatientData = async () => {
     if (!patient) return
     
     setIsLoading(true)
     try {
-      console.log('Carregando dados do paciente:', patient.id)
-      
-      // Buscar todas as consultas do paciente
-      const consultationsResponse = await fetch(`/api/consultations?patient_id=${patient.id}`)
-      let consultationsData: any = { consultations: [] }
-      
-      if (consultationsResponse.ok) {
-        consultationsData = await consultationsResponse.json()
-        console.log('Consultas encontradas:', consultationsData)
-        setConsultations(consultationsData.consultations || [])
-      } else {
-        console.error('Erro ao buscar consultas:', consultationsResponse.status)
+      console.log('Carregando dados do paciente:', patient.id, 'consulta inicial:', initialConsultationId)
+
+      let selectedConsultations: Consultation[] = []
+      const { data } = await supabase.auth.getSession()
+      const token = data.session?.access_token
+      const headers: Record<string, string> = { 'cache-control': 'no-store' }
+      if (token) headers['Authorization'] = `Bearer ${token}`
+
+      if (initialConsultationId) {
+        // Buscar apenas a consulta selecionada
+        const byId = await fetch(`/api/consultations/${initialConsultationId}`, { cache: 'no-store', headers })
+        if (byId.ok) {
+          const d = await byId.json()
+          if (d?.consultation) selectedConsultations = [d.consultation]
+        }
+      }
+
+      if (selectedConsultations.length === 0) {
+        // Fallback: buscar todas as consultas do paciente
+        const consultationsResponse = await fetch(`/api/consultations?patient_id=${patient.id}`, { cache: 'no-store', headers })
+        if (consultationsResponse.ok) {
+          const consultationsData = await consultationsResponse.json()
+          selectedConsultations = consultationsData.consultations || []
+        }
+      }
+
+      setConsultations(selectedConsultations)
+      if (!selectedConsultationId && selectedConsultations.length > 0) {
+        setSelectedConsultationId(selectedConsultations[0].id)
       }
 
       // Buscar transcrições e arquivos de áudio para cada consulta
       const allTranscriptions: Transcription[] = []
       const allAudioFiles: AudioFile[] = []
 
-      for (const consultation of consultationsData.consultations || []) {
+      for (const consultation of selectedConsultations) {
         try {
           // Buscar transcrição usando a API correta
-          const transcriptionResponse = await fetch(`/api/transcriptions?consultation_id=${consultation.id}`)
+          const transcriptionResponse = await fetch(`/api/transcriptions?consultation_id=${consultation.id}`, { cache: 'no-store', headers })
           if (transcriptionResponse.ok) {
             const transcriptionData = await transcriptionResponse.json()
             console.log('Transcrições para consulta', consultation.id, ':', transcriptionData)
@@ -129,7 +175,7 @@ export function PatientDetailsModal({ open, onOpenChange, patient }: PatientDeta
 
         try {
           // Buscar arquivo de áudio usando a API correta
-          const audioResponse = await fetch(`/api/audio-files?consultation_id=${consultation.id}`)
+          const audioResponse = await fetch(`/api/audio-files?consultation_id=${consultation.id}`, { cache: 'no-store', headers })
           if (audioResponse.ok) {
             const audioData = await audioResponse.json()
             console.log('Arquivos de áudio para consulta', consultation.id, ':', audioData)
@@ -211,12 +257,6 @@ export function PatientDetailsModal({ open, onOpenChange, patient }: PatientDeta
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="consultations">Consultas</TabsTrigger>
-            <TabsTrigger value="transcriptions">Transcrições</TabsTrigger>
-            <TabsTrigger value="audio">Áudios</TabsTrigger>
-          </TabsList>
 
           {/* Visão Geral */}
           <TabsContent value="overview" className="space-y-6">
@@ -296,10 +336,88 @@ export function PatientDetailsModal({ open, onOpenChange, patient }: PatientDeta
                 </div>
               </CardContent>
             </Card>
+
+            {/* Áudio da Consulta */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <FileAudio className="h-5 w-5" />
+                  <span>Áudio da Consulta</span>
+                </CardTitle>
+                <CardDescription>Reprodução direta do áudio vinculado à consulta</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {selectedConsultationId ? (
+                  <audio
+                    ref={audioRef}
+                    controls
+                    className="w-full"
+                    src={`/api/audio-files/stream?consultation_id=${selectedConsultationId}`}
+                  >
+                    Seu navegador não suporta a reprodução de áudio.
+                  </audio>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Nenhuma consulta selecionada para reprodução.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Contexto Clínico da Consulta */}
+            {(() => {
+              const current = consultations.find(c => c.id === (selectedConsultationId || '')) || consultations[0]
+              if (!current?.patient_context) return null
+              return (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Stethoscope className="h-5 w-5" />
+                      <span>Contexto Clínico</span>
+                    </CardTitle>
+                    <CardDescription>Informações clínicas registradas durante a consulta</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-muted p-3 rounded border max-h-80 overflow-y-auto">
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{current.patient_context}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })()}
+
+            {/* Transcrição da Consulta */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <FileText className="h-5 w-5" />
+                  <span>Transcrição</span>
+                </CardTitle>
+                <CardDescription>Texto processado da consulta selecionada</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {(() => {
+                  const current = transcriptions.find(t => t.consultation_id === (selectedConsultationId || '')) || transcriptions[0]
+                  if (!current) return (
+                    <p className="text-sm text-muted-foreground">Nenhuma transcrição disponível.</p>
+                  )
+                  return (
+                    <div className="space-y-3">
+                      <div className="text-sm text-muted-foreground flex gap-4 flex-wrap">
+                        <span>Confiança: {(current.confidence * 100).toFixed(1)}%</span>
+                        {current.processing_time ? <span>Processamento: {current.processing_time}s</span> : null}
+                        {current.language ? <span>Idioma: {current.language}</span> : null}
+                      </div>
+                      <div className="bg-muted p-3 rounded border max-h-80 overflow-y-auto">
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed">{current.raw_text}</p>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </CardContent>
+            </Card>
           </TabsContent>
 
-          {/* Consultas */}
-          <TabsContent value="consultations" className="space-y-6">
+          {/* Consultas (removida) */}
+          {/* <TabsContent value="consultations" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -358,10 +476,10 @@ export function PatientDetailsModal({ open, onOpenChange, patient }: PatientDeta
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          </TabsContent> */}
 
-          {/* Transcrições */}
-          <TabsContent value="transcriptions" className="space-y-6">
+          {/* Transcrições (removida) */}
+          {/* <TabsContent value="transcriptions" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -434,10 +552,10 @@ export function PatientDetailsModal({ open, onOpenChange, patient }: PatientDeta
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          </TabsContent> */}
 
-          {/* Arquivos de Áudio */}
-          <TabsContent value="audio" className="space-y-6">
+          {/* Arquivos de Áudio (mostrado dentro da Visão Geral via player acima) */}
+          {/* <TabsContent value="audio" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -447,12 +565,12 @@ export function PatientDetailsModal({ open, onOpenChange, patient }: PatientDeta
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {audioFiles.length === 0 ? (
-                  <div className="text-center py-8">
-                    <FileAudio className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-muted-foreground">Nenhum arquivo de áudio encontrado</p>
-                  </div>
-                ) : (
+                <div className="space-y-4">
+                  {selectedConsultationId && (
+                    <audio controls src={`/api/audio-files/stream?consultation_id=${selectedConsultationId}`} className="w-full">
+                      Seu navegador não suporta a reprodução de áudio.
+                    </audio>
+                  )}
                   <div className="space-y-4">
                     {audioFiles.map((audioFile) => (
                       <div key={audioFile.id} className="border rounded-lg p-4 space-y-3">
@@ -499,10 +617,10 @@ export function PatientDetailsModal({ open, onOpenChange, patient }: PatientDeta
                       </div>
                     ))}
                   </div>
-                )}
+                </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          </TabsContent> */}
         </Tabs>
 
         {/* Botões de Ação */}

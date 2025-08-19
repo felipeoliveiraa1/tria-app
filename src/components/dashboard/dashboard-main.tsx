@@ -5,14 +5,14 @@ import dynamic from "next/dynamic"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectItem } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Mic, FileText, Users, TrendingUp, Plus, Play, Download, ArrowLeft, Search, Calendar, Clock, User, Phone, MapPin, Trash2, Eye, X, Square, Pause, RotateCcw, CalendarDays, CheckCircle, XCircle, Gift } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useStats, usePatients, useConsultations } from "@/hooks/use-data"
 import { supabase } from "@/lib/supabase"
-import { PatientModal } from "./patient-modal"
+import { PatientDetailsModal } from "../patients/PatientDetailsModal"
 import { PatientsPage } from "../patients/PatientsPage"
 import { MetricCard } from "./metric-card"
 import { GreetingCard } from "./greeting-card"
@@ -64,11 +64,20 @@ export function DashboardMain({
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null)
   const [showPatientModal, setShowPatientModal] = useState(false)
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [detailsPatient, setDetailsPatient] = useState<Patient | null>(null)
+  const [focusedConsultationId, setFocusedConsultationId] = useState<string | undefined>(undefined)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Always render the details modal at root
+  const DetailsModalRoot = (
+    <PatientDetailsModal open={detailsOpen} onOpenChange={setDetailsOpen} patient={detailsPatient} initialConsultationId={focusedConsultationId} />
+  )
+
   // Carregamento dinâmico da página de "Nova Consulta" (definido fora do condicional)
   const NovaConsultaPage = dynamic(() => import("@/app/dashboard/nova-consulta/page"), {
     ssr: false,
@@ -327,150 +336,167 @@ export function DashboardMain({
   // Tela de Consultas
   if (currentView === "consultas") {
     return (
-      <main className="p-6 space-y-6 h-full w-full max-w-none pb-16">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Consultas</h1>
-            <p className="text-muted-foreground">Gerencie todas as suas consultas</p>
+      <>
+        {DetailsModalRoot}
+        <main className="p-6 space-y-6 h-full w-full max-w-none pb-16">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Consultas</h1>
+              <p className="text-muted-foreground">Gerencie todas as suas consultas</p>
+            </div>
+            <Button 
+              className="bg-primary hover:bg-primary-dark"
+              onClick={() => onViewChange("nova-consulta")}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Consulta
+            </Button>
           </div>
-          <Button 
-            className="bg-primary hover:bg-primary-dark"
-            onClick={() => onViewChange("nova-consulta")}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Consulta
-          </Button>
-        </div>
 
-        {/* Filtros e Busca */}
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Buscar consultas..." 
-              className="pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Filtrar por status" />
-            </SelectTrigger>
-            <SelectContent>
+          {/* Filtros e Busca */}
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Buscar consultas..." 
+                className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Select value={filterStatus} onValueChange={setFilterStatus} className="w-48">
               <SelectItem value="todas">Todas</SelectItem>
               <SelectItem value="agendadas">Agendadas</SelectItem>
-                              <SelectItem value="em_andamento">Em andamento</SelectItem>
+              <SelectItem value="em_andamento">Em andamento</SelectItem>
               <SelectItem value="concluidas">Concluídas</SelectItem>
               <SelectItem value="canceladas">Canceladas</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Lista de Consultas */}
-        {consultationsLoading ? (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">Carregando consultas...</p>
+            </Select>
           </div>
-        ) : (
-          <div className="space-y-4">
-            {filteredConsultations.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">Nenhuma consulta encontrada</p>
-              </div>
-            ) : (
-              filteredConsultations.map((consulta) => {
-                const patient = patients.find(p => p.id === consulta.patient_id)
-                const patientName = consulta.patient_name || patient?.name || "Paciente não encontrado"
-                const consultationDate = consulta.created_at
-                const consultationTime = formatTimeBR(consulta.created_at)
-                const consultationType = consulta.consultation_type || "PRESENCIAL"
-                
-                return (
-                  <Card key={consulta.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                            <User className="h-6 w-6 text-primary" />
+
+          {/* Lista de Consultas */}
+          {consultationsLoading ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">Carregando consultas...</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredConsultations.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">Nenhuma consulta encontrada</p>
+                </div>
+              ) : (
+                filteredConsultations.map((consulta) => {
+                  const patient = patients.find(p => p.id === consulta.patient_id)
+                  const patientName = consulta.patient_name || patient?.name || "Paciente não encontrado"
+                  const consultationDate = consulta.created_at
+                  const consultationTime = formatTimeBR(consulta.created_at)
+                  const consultationType = consulta.consultation_type || "PRESENCIAL"
+                  
+                  return (
+                    <Card key={consulta.id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                              <User className="h-6 w-6 text-primary" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-foreground">
+                                {patientName}
+                              </h3>
+                              <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                                <span className="flex items-center">
+                                  <Calendar className="h-4 w-4 mr-1" />
+                                  {consultationDate ? formatDateBR(consultationDate) : "Data não definida"}
+                                </span>
+                                <span className="flex items-center">
+                                  <Clock className="h-4 w-4 mr-1" />
+                                  {consultationTime}
+                                </span>
+                                <span className="flex items-center">
+                                  <Mic className="h-4 w-4 mr-1" />
+                                  {consultationType === "PRESENCIAL" ? "Presencial" : "Telemedicina"}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                          <div>
-                            <h3 className="font-semibold text-foreground">
-                              {patientName}
-                            </h3>
-                            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                              <span className="flex items-center">
-                                <Calendar className="h-4 w-4 mr-1" />
-                                {consultationDate ? formatDateBR(consultationDate) : "Data não definida"}
-                              </span>
-                              <span className="flex items-center">
-                                <Clock className="h-4 w-4 mr-1" />
-                                {consultationTime}
-                              </span>
-                              <span className="flex items-center">
-                                <Mic className="h-4 w-4 mr-1" />
-                                {consultationType === "PRESENCIAL" ? "Presencial" : "Telemedicina"}
-                              </span>
+                          
+                          <div className="flex items-center space-x-3">
+                            <Badge variant={
+                              consulta.status === "COMPLETED" ? "default" :
+                              consulta.status === "RECORDING" ? "secondary" :
+                              consulta.status === "CREATED" ? "outline" : "destructive"
+                            }>
+                              {consulta.status === "COMPLETED" ? "Concluída" :
+                               consulta.status === "RECORDING" ? "Em andamento" :
+                               consulta.status === "CREATED" ? "Agendada" : 
+                               consulta.status === "CANCELLED" ? "Cancelada" : consulta.status}
+                            </Badge>
+                            
+                            <div className="text-right">
+                              <p className="text-sm text-muted-foreground">Duração</p>
+                              <p className="font-medium">
+                                {consulta.duration ? `${Math.floor(consulta.duration / 60)}:${(consulta.duration % 60).toString().padStart(2, '0')}` : "-"}
+                              </p>
+                            </div>
+                            
+                            <div className="flex space-x-2">
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => {
+                                  let p = patients.find(p => p.id === consulta.patient_id) || null
+                                  if (!p) {
+                                    p = {
+                                      id: (consulta as any).patient_id || '',
+                                      name: consulta.patient_name || 'Paciente',
+                                      email: '',
+                                      phone: '',
+                                      city: '',
+                                      status: 'active',
+                                      doctor_id: user?.id || '',
+                                      created_at: new Date().toISOString(),
+                                      updated_at: new Date().toISOString()
+                                    }
+                                  }
+                                  setDetailsPatient(p)
+                                  setFocusedConsultationId(consulta.id)
+                                  setDetailsOpen(true)
+                                  console.log('Abrindo ficha em modal para', p)
+                                }}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="text-destructive"
+                                onClick={async () => {
+                                  try {
+                                    const ok = confirm('Deseja realmente apagar esta consulta? Esta ação não pode ser desfeita.')
+                                    if (!ok) return
+                                    await deleteConsultation(consulta.id)
+                                    refreshConsultations()
+                                  } catch (e) {
+                                    console.error('Erro ao apagar consulta:', e)
+                                    alert('Não foi possível apagar a consulta. Tente novamente.')
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </div>
                         </div>
-                        
-                        <div className="flex items-center space-x-3">
-                          <Badge variant={
-                            consulta.status === "COMPLETED" ? "default" :
-                            consulta.status === "RECORDING" ? "secondary" :
-                            consulta.status === "CREATED" ? "outline" : "destructive"
-                          }>
-                            {consulta.status === "COMPLETED" ? "Concluída" :
-                             consulta.status === "RECORDING" ? "Em andamento" :
-                             consulta.status === "CREATED" ? "Agendada" : 
-                             consulta.status === "CANCELLED" ? "Cancelada" : consulta.status}
-                          </Badge>
-                          
-                          <div className="text-right">
-                            <p className="text-sm text-muted-foreground">Duração</p>
-                            <p className="font-medium">
-                              {consulta.duration ? `${Math.floor(consulta.duration / 60)}:${(consulta.duration % 60).toString().padStart(2, '0')}` : "-"}
-                            </p>
-                          </div>
-                          
-                          <div className="flex space-x-2">
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              onClick={() => window.open(`/dashboard/patients/${consulta.id}`, '_blank')}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="text-destructive"
-                              onClick={async () => {
-                                try {
-                                  const ok = confirm('Deseja realmente apagar esta consulta? Esta ação não pode ser desfeita.')
-                                  if (!ok) return
-                                  await deleteConsultation(consulta.id)
-                                  refreshConsultations()
-                                } catch (e) {
-                                  console.error('Erro ao apagar consulta:', e)
-                                  alert('Não foi possível apagar a consulta. Tente novamente.')
-                                }
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              })
-            )}
-          </div>
-        )}
-      </main>
+                      </CardContent>
+                    </Card>
+                  )
+                })
+              )}
+            </div>
+          )}
+        </main>
+      </>
     )
   }
 
@@ -532,28 +558,18 @@ export function DashboardMain({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium">Dispositivo de Áudio Padrão</label>
-                  <Select>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Selecione o dispositivo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="default">Microfone Padrão</SelectItem>
-                      <SelectItem value="airpods">AirPods Pro</SelectItem>
-                      <SelectItem value="external">Microfone Externo</SelectItem>
-                    </SelectContent>
+                  <Select className="mt-1">
+                    <SelectItem value="default">Microfone Padrão</SelectItem>
+                    <SelectItem value="airpods">AirPods Pro</SelectItem>
+                    <SelectItem value="external">Microfone Externo</SelectItem>
                   </Select>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Qualidade de Gravação</label>
-                  <Select>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Selecione a qualidade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Baixa (16kHz)</SelectItem>
-                      <SelectItem value="medium">Média (44.1kHz)</SelectItem>
-                      <SelectItem value="high">Alta (48kHz)</SelectItem>
-                    </SelectContent>
+                  <Select className="mt-1">
+                    <SelectItem value="low">Baixa (16kHz)</SelectItem>
+                    <SelectItem value="medium">Média (44.1kHz)</SelectItem>
+                    <SelectItem value="high">Alta (48kHz)</SelectItem>
                   </Select>
                 </div>
               </div>
@@ -1071,14 +1087,9 @@ function PatientForm({
 
       <div>
         <label className="text-sm font-medium">Status</label>
-        <Select value={formData.status} onValueChange={(value) => handleChange("status", value)}>
-          <SelectTrigger className="mt-1">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="active">Ativo</SelectItem>
-            <SelectItem value="inactive">Inativo</SelectItem>
-          </SelectContent>
+        <Select value={formData.status} onValueChange={(value) => handleChange("status", value)} className="mt-1">
+          <SelectItem value="active">Ativo</SelectItem>
+          <SelectItem value="inactive">Inativo</SelectItem>
         </Select>
       </div>
 
