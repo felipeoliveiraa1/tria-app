@@ -8,12 +8,14 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Mic, FileText, Users, TrendingUp, Plus, Play, Download, ArrowLeft, Search, Calendar, Clock, User, Phone, MapPin, Trash2, Eye, X, Square, Pause, RotateCcw } from "lucide-react"
+import { Mic, FileText, Users, TrendingUp, Plus, Play, Download, ArrowLeft, Search, Calendar, Clock, User, Phone, MapPin, Trash2, Eye, X, Square, Pause, RotateCcw, CalendarDays, CheckCircle, XCircle, Gift } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useStats, usePatients, useConsultations } from "@/hooks/use-data"
 import { supabase } from "@/lib/supabase"
 import { PatientModal } from "./patient-modal"
 import { PatientsPage } from "../patients/PatientsPage"
+import { MetricCard } from "./metric-card"
+import { GreetingCard } from "./greeting-card"
 
 
 type DashboardView = "main" | "nova-consulta" | "consultas" | "pacientes" | "configuracoes" | "gravacao"
@@ -663,79 +665,59 @@ export function DashboardMain({
   }
 
   return (
-    <main className="p-6 space-y-6 h-full w-full max-w-none">
-      {/* Welcome Section */}
-      <div className="space-y-2">
-        <h2 className="text-3xl font-bold text-foreground">
-          Bem-vindo, {user?.user_metadata?.full_name || (user as any)?.user_metadata?.name || user?.email || "Dr. Silva"}! 👋
-        </h2>
-        <p className="text-foreground-secondary">
-          Aqui está um resumo das suas atividades de hoje
-        </p>
+    <main className="p-4 lg:p-6 space-y-6 h-full w-full max-w-none">
+      {/* Saudações + KPIs lado a lado */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <div className="xl:col-span-2">
+          <GreetingCard userName={user?.user_metadata?.full_name || (user as any)?.user_metadata?.name || user?.email || null} />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <MetricCard title="Consultas Hoje" value={stats.todayConsultations} variant="green" icon={<CalendarDays className="h-5 w-5" />} />
+          <MetricCard title="Total de Consultas" value={stats.totalConsultations} variant="blue" icon={<FileText className="h-5 w-5" />} />
+          <MetricCard title="Pacientes Ativos" value={stats.totalPatients} variant="cyan" icon={<Users className="h-5 w-5" />} />
+          <MetricCard title="Produtividade" value={`${stats.productivity}%`} variant="orange" icon={<TrendingUp className="h-5 w-5" />} />
+        </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
-        {statsData.map((stat, index) => (
-          <Card key={stat.title} className="card-hover animate-fade-in" style={{ animationDelay: `${index * 100}ms` }}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-foreground-secondary">
-                {stat.title}
-              </CardTitle>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
+      {/* Ações rápidas abaixo dos cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {quickActions.map((action, index) => (
+          <Card key={action.title} className="card-hover animate-slide-up border-border shadow-sm" style={{ animationDelay: `${index * 100}ms` }}>
+            <CardHeader>
+              <div className="flex items-center space-x-3">
+                <div className={`p-2 rounded-lg ${action.color} text-white`}>
+                  <action.icon className="h-5 w-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">{action.title}</CardTitle>
+                  <CardDescription>{action.description}</CardDescription>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-foreground">{stat.value}</div>
-              <p className="text-xs text-green-600 mt-1">
-                {stat.change} desde ontem
-              </p>
+              <Button
+                className={`w-full ${action.color} text-white`}
+                onClick={() => {
+                  if (action.title === 'Nova Consulta') {
+                    onViewChange('nova-consulta')
+                  } else if (action.title === 'Ver Demonstração') {
+                    window.open('https://www.loom.com/share/collection/7871f9f0b8a44f7e83f2e7-demo', '_blank')
+                  } else if (action.title === 'Baixar Relatório') {
+                    handleDownloadReport()
+                  }
+                }}
+              >
+                {action.action}
+              </Button>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Quick Actions */}
-      <div className="space-y-4 w-full">
-        <h3 className="text-xl font-semibold text-foreground">Ações Rápidas</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-          {quickActions.map((action, index) => (
-            <Card key={action.title} className="card-hover animate-slide-up" style={{ animationDelay: `${index * 100}ms` }}>
-              <CardHeader>
-                <div className="flex items-center space-x-3">
-                  <div className={`p-2 rounded-lg ${action.color} text-white`}>
-                    <action.icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg">{action.title}</CardTitle>
-                    <CardDescription>{action.description}</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Button
-                  className={`w-full ${action.color} text-white`}
-                  onClick={() => {
-                    if (action.title === 'Nova Consulta') {
-                      onViewChange('nova-consulta')
-                    } else if (action.title === 'Ver Demonstração') {
-                      window.open('https://www.loom.com/share/collection/7871f9f0b8a44f7e83f2e7-demo', '_blank')
-                    } else if (action.title === 'Baixar Relatório') {
-                      handleDownloadReport()
-                    }
-                  }}
-                >
-                  {action.action}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-
-      {/* Recent Activity */}
+      {/* Charts and lists */}
       <div className="space-y-4 w-full">
         <h3 className="text-xl font-semibold text-foreground">Atividade Recente</h3>
-        <Card className="card-hover w-full">
+        <Card className="card-hover w-full border-border shadow-sm">
           <CardHeader>
             <CardTitle>Consultas de Hoje</CardTitle>
             <CardDescription>Últimas consultas registradas</CardDescription>

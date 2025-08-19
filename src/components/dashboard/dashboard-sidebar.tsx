@@ -1,6 +1,6 @@
 "use client"
 
-import { X, Mic, FileText, Users, Settings, LogOut, Plus } from "lucide-react"
+import { X, Mic, FileText, Users, Settings, LogOut, Plus, Home, CalendarDays, Banknote, BarChart3, FolderClosed, LifeBuoy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/ui/logo"
 import { useAuth } from "@/contexts/auth-context"
@@ -20,7 +20,7 @@ export function DashboardSidebar({ open, setOpen, currentView, onViewChange }: D
   const router = useRouter()
 
   const navigation = [
-    { name: "Dashboard", icon: FileText, id: "main" as DashboardView },
+    { name: "Home", icon: Home, id: "main" as DashboardView },
     { name: "Nova Consulta", icon: Plus, id: "nova-consulta" as DashboardView },
     { name: "Consultas", icon: Mic, id: "consultas" as DashboardView },
     { name: "Pacientes", icon: Users, id: "pacientes" as DashboardView },
@@ -58,17 +58,21 @@ export function DashboardSidebar({ open, setOpen, currentView, onViewChange }: D
 
       {/* Sidebar */}
       <div className={`
-        fixed inset-y-0 left-0 z-50 w-72 transform bg-card border-r border-border transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${open ? 'translate-x-0' : '-translate-x-full'}
+        fixed inset-y-0 left-0 z-50 transform bg-card border-r border-border transition-all duration-300 ease-in-out
+        ${open ? 'w-72 translate-x-0' : 'w-16 group/sidebar hover:w-64 lg:translate-x-0'}
+        lg:static lg:inset-0 ${open ? '' : ''}
       `}>
         <div className="flex h-full flex-col">
           {/* Header */}
-          <div className="flex h-16 items-center justify-between px-6 border-b border-border">
-            <Logo />
+          <div className="flex h-16 items-center justify-between px-3 lg:px-4 border-b border-border overflow-hidden">
+            <div className="flex items-center">
+              <Logo />
+              <span className={`${open ? 'opacity-100 ml-2' : 'opacity-0 ml-0 lg:group-hover/sidebar:opacity-100 lg:group-hover/sidebar:ml-2'} transition-all text-sm font-medium whitespace-nowrap`}>BETA</span>
+            </div>
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden"
+              className={`lg:hidden ${open ? '' : 'opacity-0 pointer-events-none'}`}
               onClick={() => setOpen(false)}
             >
               <X className="h-5 w-5" />
@@ -76,40 +80,39 @@ export function DashboardSidebar({ open, setOpen, currentView, onViewChange }: D
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-1 px-3 py-4">
+          <nav className="flex-1 space-y-1 px-2 py-4">
             {navigation.map((item) => {
               const isActive = currentView === item.id
+              const labelCls = `${open ? 'opacity-100 w-auto ml-3' : 'opacity-0 w-0 ml-0 lg:group-hover/sidebar:opacity-100 lg:group-hover/sidebar:w-auto lg:group-hover/sidebar:ml-3'} transition-all duration-200 whitespace-nowrap`
               return (
                 <button
                   key={item.name}
                   onClick={() => handleNavigation(item)}
+                  title={item.name}
                   className={`
-                    group flex w-full items-center px-3 py-2 text-sm font-medium rounded-md transition-all duration-200
+                    group/item flex w-full items-center px-3 py-2 text-sm font-medium rounded-md transition-all duration-200
                     ${isActive 
                       ? 'bg-primary text-white shadow-md' 
                       : 'text-foreground-secondary hover:bg-accent hover:text-foreground'
                     }
                   `}
                 >
-                  <item.icon className={`
-                    mr-3 h-5 w-5 transition-colors duration-200
-                    ${isActive ? 'text-white' : 'text-foreground-secondary group-hover:text-foreground'}
-                  `} />
-                  {item.name}
+                  <item.icon className={`${isActive ? 'text-white' : 'text-foreground-secondary group-hover/item:text-foreground'} h-5 w-5`} />
+                  <span className={labelCls}>{item.name}</span>
                 </button>
               )
             })}
           </nav>
 
           {/* Footer */}
-          <div className="border-t border-border p-4">
+          <div className="border-t border-border p-3">
             <Button
               variant="ghost"
-              className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+              className={`w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10`}
               onClick={handleSignOut}
             >
-              <LogOut className="mr-3 h-5 w-5" />
-              Sair
+              <LogOut className="h-5 w-5" />
+              <span className={`${open ? 'opacity-100 w-auto ml-3' : 'opacity-0 w-0 ml-0 lg:group-hover/sidebar:opacity-100 lg:group-hover/sidebar:w-auto lg:group-hover/sidebar:ml-3'} transition-all duration-200`}>Sair</span>
             </Button>
           </div>
         </div>

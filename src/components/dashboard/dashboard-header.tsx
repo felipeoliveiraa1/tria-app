@@ -1,10 +1,11 @@
 "use client"
 
-import { Menu, Bell, User, LogOut } from "lucide-react"
+import { Menu, Bell, User, LogOut, Search, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
+import { Input } from "@/components/ui/input"
 
 interface DashboardHeaderProps {
   onMenuClick: () => void
@@ -25,7 +26,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
 
   return (
     <header className="sticky top-0 z-30 bg-card/80 backdrop-blur-sm border-b border-border">
-      <div className="flex h-16 items-center justify-between px-6">
+      <div className="flex h-16 items-center justify-between px-4 lg:px-6 gap-3">
         {/* Mobile menu button */}
         <Button
           variant="ghost"
@@ -36,16 +37,23 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
           <Menu className="h-5 w-5" />
         </Button>
 
-        {/* Page title */}
-        <div className="hidden lg:block">
-          <h1 className="text-xl font-semibold text-foreground">Dashboard</h1>
-          <p className="text-sm text-foreground-secondary">
-            Bem-vindo ao TRIA, {user?.user_metadata?.full_name || (user as any)?.user_metadata?.name || user?.email || "Usuário"}
-          </p>
+        {/* Center search */}
+        <div className="flex-1 max-w-3xl mx-auto hidden md:flex items-center">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Encontre pacientes ou funcionalidades do sistema"
+              className="pl-9"
+            />
+          </div>
         </div>
 
         {/* Right side actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <div className="hidden md:flex items-center text-sm text-muted-foreground border rounded-md px-2 h-9">
+            <Calendar className="h-4 w-4 mr-2" />
+            Hoje
+          </div>
           <ThemeToggle />
           
           <Button variant="ghost" size="icon" className="relative">
