@@ -1,4 +1,6 @@
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
@@ -81,8 +83,7 @@ export async function GET(request: Request) {
       }
     }
     if (!doctorId) {
-      const { data: u } = await supabase.auth.getUser()
-      doctorId = u.user?.id ?? null
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
     const { data: consultation, error } = await db
@@ -90,10 +91,18 @@ export async function GET(request: Request) {
       .select('*')
       .eq('id', id)
       .eq('doctor_id', doctorId)
-      .single()
+      .maybeSingle()
 
     if (error) {
-      return NextResponse.json({ error: `Erro ao buscar consulta: ${error.message}` }, { status: 500 })
+      // Tratar erro de not found do PostgREST como 404
+      const message = (error as any)?.message || 'Erro ao buscar consulta'
+      const isNotFound = message?.toString().toLowerCase().includes('not found') || (error as any)?.code === 'PGRST116'
+      const status = isNotFound ? 404 : 500
+      return NextResponse.json({ error: message }, { status })
+    }
+
+    if (!consultation) {
+      return NextResponse.json({ error: 'Consulta não encontrada' }, { status: 404 })
     }
 
     return NextResponse.json({ consultation, success: true, source: 'supabase' })

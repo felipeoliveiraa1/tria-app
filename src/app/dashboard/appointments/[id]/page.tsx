@@ -55,9 +55,12 @@ export default function RecordingPage() {
         console.log('Carregando dados da consulta:', consultationId)
         
         // Buscar dados reais da API
-        const token = await import('@/lib/supabase').then(m => m.supabase.auth.getSession()).then(r => r.data.session?.access_token).catch(() => undefined)
-        const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined
-        const response = await fetch(`/api/consultations/${consultationId}`, { headers: authHeaders })
+        const { supabase } = await import('@/lib/supabase')
+        const { data } = await supabase.auth.getSession()
+        const token = data.session?.access_token
+        const headers: Record<string, string> = { 'cache-control': 'no-store' }
+        if (token) headers['Authorization'] = `Bearer ${token}`
+        const response = await fetch(`/api/consultations/${consultationId}`, { headers })
         if (response.ok) {
           const data = await response.json()
           console.log('Dados da consulta carregados:', data)
@@ -77,7 +80,7 @@ export default function RecordingPage() {
             })
           }
         } else {
-          console.log('Falha ao carregar consulta, usando fallback')
+          console.log('Falha ao carregar consulta, usando fallback', response.status)
           // Fallback para dados mockados se a API não estiver disponível
           setConsultation({
             id: consultationId,

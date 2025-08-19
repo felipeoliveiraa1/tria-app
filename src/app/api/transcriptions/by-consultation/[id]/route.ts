@@ -1,4 +1,6 @@
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 import { NextResponse } from 'next/server'
 
 // Função para criar cliente Supabase com fallback
