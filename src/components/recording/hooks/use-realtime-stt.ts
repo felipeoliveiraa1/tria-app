@@ -45,11 +45,15 @@ export const useRealtimeSTT = () => {
 
   // Verificar se o navegador suporta Web Speech API
   const isSupported = () => {
+    // Verificação SSR-safe para Next.js
+    if (typeof window === 'undefined') return false
     return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window
   }
 
   // Obter a classe de reconhecimento disponível
   const getSpeechRecognition = () => {
+    // Verificação SSR-safe para Next.js
+    if (typeof window === 'undefined') return null
     if ('webkitSpeechRecognition' in window) {
       return (window as any).webkitSpeechRecognition
     }

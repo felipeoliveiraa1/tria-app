@@ -1,0 +1,100 @@
+/* Estilos para dar aparência de papel médico real */
+
+.medical-paper {
+  background: linear-gradient(to bottom, #fdfdfd 0%, #f9f9f9 100%);
+  box-shadow: 
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.9);
+}
+
+.medical-paper::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 60px;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, #ff6b6b 0%, #ff6b6b 50%, transparent 50%, transparent 100%);
+  background-size: 2px 20px;
+  opacity: 0.3;
+}
+
+.medical-paper-lines {
+  background-image: 
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 23px,
+      rgba(59, 130, 246, 0.1) 24px,
+      rgba(59, 130, 246, 0.1) 24px
+    );
+}
+
+.medical-form-field {
+  position: relative;
+  background: rgba(255, 255, 255, 0.8);
+  border-bottom: 1px dotted #cbd5e1;
+  transition: all 0.2s ease;
+}
+
+.medical-form-field:hover {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.medical-form-field.filled {
+  background: rgba(240, 253, 244, 0.9);
+  border-bottom: 1px solid #10b981;
+}
+
+.medical-form-field.active {
+  background: rgba(239, 246, 255, 0.9);
+  border-bottom: 2px solid #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.medical-section-header {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, transparent 100%);
+  border-left: 4px solid #3b82f6;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-weight: 600;
+  color: #1e40af;
+}
+
+.handwriting-font {
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.5px;
+}
+
+/* Animação para preenchimento automático */
+@keyframes autofill-glow {
+  0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7); }
+  50% { box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.3); }
+  100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+}
+
+.auto-filled {
+  animation: autofill-glow 1s ease-out;
+}
+
+/* Estilo para sugestões da IA */
+.ai-suggestion-card {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(147, 197, 253, 0.05) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  backdrop-filter: blur(2px);
+}
+
+.ai-suggestion-button {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  transition: all 0.2s ease;
+}
+
+.ai-suggestion-button:hover {
+  background: rgba(239, 246, 255, 0.9);
+  border-color: rgba(59, 130, 246, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+}
+

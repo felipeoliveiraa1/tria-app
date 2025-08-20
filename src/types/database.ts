@@ -126,6 +126,7 @@ export interface Database {
           treatment: string | null
           prescription: string | null
           next_appointment: string | null
+          anamnese: any | null
           created_at: string
           updated_at: string
         }
@@ -144,6 +145,7 @@ export interface Database {
           treatment?: string | null
           prescription?: string | null
           next_appointment?: string | null
+          anamnese?: any | null
           created_at?: string
           updated_at?: string
         }
@@ -162,6 +164,7 @@ export interface Database {
           treatment?: string | null
           prescription?: string | null
           next_appointment?: string | null
+          anamnese?: any | null
           created_at?: string
           updated_at?: string
         }

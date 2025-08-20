@@ -245,7 +245,8 @@ export async function PUT(request: NextRequest) {
         treatment,
         prescription,
         next_appointment,
-        patient_context
+        patient_context,
+        anamnese
       } = body
 
       if (!id) {
@@ -270,6 +271,7 @@ export async function PUT(request: NextRequest) {
       if (prescription !== undefined) updateData.prescription = prescription
       if (next_appointment !== undefined) updateData.next_appointment = next_appointment
       if (patient_context !== undefined) updateData.patient_context = patient_context
+      if (anamnese !== undefined) updateData.anamnese = anamnese
 
       const { data: consultation, error } = await supabase
         .from('consultations')
@@ -308,7 +310,8 @@ export async function PUT(request: NextRequest) {
         treatment,
         prescription,
         next_appointment,
-        patient_context
+        patient_context,
+        anamnese
       } = body
 
       const tempConsultation = {
@@ -322,6 +325,7 @@ export async function PUT(request: NextRequest) {
         prescription,
         next_appointment,
         patient_context,
+        anamnese,
         updated_at: new Date().toISOString(),
         message: 'Consulta temporária - Supabase indisponível'
       }

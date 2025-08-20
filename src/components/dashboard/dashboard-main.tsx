@@ -9,6 +9,7 @@ import { Select, SelectItem } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Mic, FileText, Users, TrendingUp, Plus, Play, Download, ArrowLeft, Search, Calendar, Clock, User, Phone, MapPin, Trash2, Eye, X, Square, Pause, RotateCcw, CalendarDays, CheckCircle, XCircle, Gift } from "lucide-react"
+import AnamneseRunner from "../consultations/AnamneseRunner"
 import { useAuth } from "@/contexts/auth-context"
 import { useStats, usePatients, useConsultations } from "@/hooks/use-data"
 import { supabase } from "@/lib/supabase"
@@ -1223,66 +1224,50 @@ function RecordingPanel({ consultationId, onClose, onFinalized }: { consultation
 
       {/* Conteúdo Principal */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Coluna Esquerda - Controles e Status */}
-        <div className="w-1/3 border-r border-border p-4 space-y-6">
+        {/* Coluna Esquerda - Anamnese */}
+        <div className="w-1/2 border-r border-border p-4 overflow-y-auto">
+          <AnamneseRunner consultationId={consultationId} />
+        </div>
+
+        {/* Coluna Direita - Transcrição e Controles */}
+        <div className="flex-1 p-4 flex flex-col">
           {/* Status da Gravação */}
-          <div className="space-y-3">
+          <div className="space-y-3 mb-6">
             <h4 className="font-medium">Status da Gravação</h4>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Status:</span>
-                <Badge variant={isRecording ? "default" : "secondary"}>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center p-3 bg-muted rounded-lg">
+                <div className="text-sm text-muted-foreground">Status</div>
+                <Badge variant={isRecording ? "default" : "secondary"} className="mt-1">
                   {isRecording ? "Gravando" : "Parado"}
                 </Badge>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Tempo:</span>
-                <span className="text-sm font-mono">{formatTime(elapsed)}</span>
+              <div className="text-center p-3 bg-muted rounded-lg">
+                <div className="text-sm text-muted-foreground">Tempo</div>
+                <div className="text-sm font-mono mt-1">{formatTime(elapsed)}</div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Tamanho:</span>
-                <span className="text-sm">{(elapsed / 1000 * 0.064).toFixed(2)} MB</span>
+              <div className="text-center p-3 bg-muted rounded-lg">
+                <div className="text-sm text-muted-foreground">Tamanho</div>
+                <div className="text-sm mt-1">{(elapsed / 1000 * 0.064).toFixed(2)} MB</div>
+              </div>
+            </div>
+
+            {/* Nível de Áudio */}
+            <div>
+              <div className="flex justify-between text-sm mb-2">
+                <span>Nível de Áudio</span>
+                <span>{Math.round(audioLevel)}%</span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-2">
+                <div 
+                  className="bg-primary h-2 rounded-full transition-all duration-100"
+                  style={{ width: `${audioLevel}%` }}
+                />
               </div>
             </div>
           </div>
 
-          {/* Nível de Áudio */}
-          <div className="space-y-3">
-            <h4 className="font-medium">Nível de Áudio</h4>
-            <div className="w-full bg-muted rounded-full h-2">
-              <div 
-                className="bg-primary h-2 rounded-full transition-all duration-100"
-                style={{ width: `${audioLevel}%` }}
-              />
-            </div>
-            <div className="text-xs text-muted-foreground text-center">
-              {Math.round(audioLevel)}%
-            </div>
-          </div>
-
-          {/* Ações Rápidas */}
-          <div className="space-y-3">
-            <h4 className="font-medium">Ações Rápidas</h4>
-            <div className="space-y-2">
-              <Button variant="outline" size="sm" className="w-full justify-start">
-                <FileText className="h-4 w-4 mr-2" />
-                Salvar Transcrição
-              </Button>
-              <Button variant="outline" size="sm" className="w-full justify-start">
-                <Download className="h-4 w-4 mr-2" />
-                Exportar Áudio
-              </Button>
-              <Button variant="outline" size="sm" className="w-full justify-start">
-                <Eye className="h-4 w-4 mr-2" />
-                Salvar Transcrição
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Coluna Direita - Transcrição em Tempo Real */}
-        <div className="flex-1 p-4">
-          <div className="h-full flex flex-col">
+          {/* Transcrição */}
+          <div className="flex-1 flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-medium">Transcrição em Tempo Real</h4>
               <Badge variant="outline">

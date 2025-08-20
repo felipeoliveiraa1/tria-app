@@ -12,6 +12,7 @@ import { useRecordingStore } from "@/components/recording/store/recording-store"
 import { useRealtimeSTT } from "@/components/recording/hooks/use-realtime-stt"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, FileText, User, Calendar, Clock } from "lucide-react"
+import AnamneseRunner from "@/components/consultations/AnamneseRunner"
 
 interface Consultation {
   id: string
@@ -262,10 +263,9 @@ export default function RecordingPage() {
               />
             }
           >
-            {/* Coluna esquerda - Contexto do paciente */}
-            <PatientContextPanel
+            {/* Coluna esquerda - Anamnese */}
+            <AnamneseRunner
               consultationId={consultationId}
-              initialContext={consultation.patient_context || ""}
             />
             
             {/* Coluna direita - Transcrição em tempo real */}
