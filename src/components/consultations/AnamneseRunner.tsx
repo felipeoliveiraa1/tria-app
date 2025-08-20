@@ -391,7 +391,8 @@ export default function AnamneseRunner({ consultationId, initialAnswers }: Props
                       
                     } catch (error) {
                       console.error('❌ ERRO na limpeza:', error);
-                      alert('❌ ERRO: ' + error.message);
+                      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+                      alert('❌ ERRO: ' + errorMessage);
                     }
                   }}
                 >
