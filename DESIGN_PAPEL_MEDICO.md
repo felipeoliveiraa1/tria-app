@@ -157,3 +157,4 @@ O novo design transforma a anamnese em uma **ficha médica digital realística**
 
 **Agora você tem uma verdadeira ficha médica digital!** 🩺📋✨
 
+

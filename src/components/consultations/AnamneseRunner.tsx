@@ -69,20 +69,40 @@ export default function AnamneseRunner({ consultationId, initialAnswers }: Props
     
     if (!newText.trim()) return;
     
+    console.log('🎙️ NOVO TEXTO DETECTADO:', {
+      newText: newText.substring(0, 100) + '...',
+      segmentCount: newSegments.length,
+      totalSegments: finalSegments.length,
+      currentQuestion: current?.id,
+      currentLabel: current?.label
+    });
+    
     // Atualizar contador de segmentos processados
     setLastProcessedSegmentCount(finalSegments.length);
     
     // Adicionar à transcrição completa
-    setFullTranscription(prev => prev + ' ' + newText);
+    setFullTranscription(prev => {
+      const updated = prev + ' ' + newText;
+      console.log('📝 TRANSCRIÇÃO COMPLETA ATUALIZADA:', updated.substring(-200));
+      return updated;
+    });
     
     // 🧠 ANÁLISE INTELIGENTE: Detectar TODAS as respostas possíveis
+    console.log('🤖 INICIANDO ANÁLISE IA...');
     const allDetections = analyzeTranscriptionForAnamnese(newText, current?.id);
     
     if (allDetections.length > 0) {
-      console.log('🤖 IA detectou:', allDetections);
+      console.log('🎉 IA DETECTOU RESPOSTAS:', allDetections.map(d => ({
+        pergunta: d.questionId,
+        resposta: d.answer,
+        confianca: Math.round(d.confidence * 100) + '%',
+        secao: d.section
+      })));
       
       // 📝 PREENCHIMENTO MÚLTIPLO: Preencher todas as respostas com alta confiança
       const highConfidenceAnswers = allDetections.filter(d => d.confidence > 0.7);
+      console.log('🎯 ALTA CONFIANÇA (>70%):', highConfidenceAnswers.map(d => `${d.questionId}: ${Math.round(d.confidence * 100)}%`));
+      
       const newAnswers = { ...answers };
       const autoFilledQuestions: string[] = [];
       
@@ -91,7 +111,9 @@ export default function AnamneseRunner({ consultationId, initialAnswers }: Props
         if (!answers[detection.questionId]?.trim()) {
           newAnswers[detection.questionId] = detection.answer;
           autoFilledQuestions.push(detection.questionId);
-          console.log(`✅ Auto-preenchido: ${detection.questionId} = "${detection.answer}" (${Math.round(detection.confidence * 100)}%)`);
+          console.log(`✅ AUTO-PREENCHIDO: ${detection.questionId} = "${detection.answer}" (confiança: ${Math.round(detection.confidence * 100)}%)`);
+        } else {
+          console.log(`⏭️ IGNORADO (já respondido): ${detection.questionId} = "${answers[detection.questionId]}"`);
         }
       });
       
@@ -103,14 +125,20 @@ export default function AnamneseRunner({ consultationId, initialAnswers }: Props
         
         // 🎯 NAVEGAÇÃO INTELIGENTE: Ir para próxima pergunta não respondida
         if (autoAdvanceEnabled) {
+          console.log('🔄 NAVEGAÇÃO AUTOMÁTICA ATIVADA - buscando próxima pergunta...');
+          
           setTimeout(() => {
             // Encontrar próxima pergunta não respondida
             const nextUnanswered = ALL.find(q => !newAnswers[q.id]?.trim());
             if (nextUnanswered) {
+              console.log(`🎯 NAVEGANDO PARA: ${nextUnanswered.id} - "${nextUnanswered.label}"`);
               setCurrentId(nextUnanswered.id);
-              console.log(`🔄 Auto-navegou para: ${nextUnanswered.label}`);
+            } else {
+              console.log('🏁 TODAS AS PERGUNTAS RESPONDIDAS! Anamnese completa.');
             }
           }, 1500);
+        } else {
+          console.log('⏸️ NAVEGAÇÃO AUTOMÁTICA DESABILITADA');
         }
         
         // Atualizar pergunta atual se foi preenchida
@@ -334,12 +362,51 @@ export default function AnamneseRunner({ consultationId, initialAnswers }: Props
               </div>
             )}
 
-            {/* Botões de Ação - SEMPRE VISÍVEL PARA DEBUG */}
-            <div className="mt-4 p-4 bg-gray-100 rounded-lg">
+            {/* Painel de Debug Inteligente - SEMPRE VISÍVEL */}
+            <div className="mt-4 p-4 bg-gray-100 rounded-lg border-l-4 border-blue-500">
+              <h4 className="text-sm font-semibold text-gray-800 mb-2">🔍 Debug do Sistema IA</h4>
+              
+              {/* Status da Transcrição */}
               <div className="text-xs text-gray-600 mb-2">
-                Debug: currentId={currentId} | current={current?.label || 'undefined'} | answers={Object.keys(answers).length}<br/>
-                textareaValue="{textareaValue}" | currentValue="{currentValue}" | partialText="{partialText?.substring(0, 30)}..."<br/>
-                currentAnswer="{answers[currentId] || 'undefined'}"
+                <strong>📡 Transcrição:</strong> {finalSegments.length} segmentos processados | 
+                Texto atual: "{partialText?.substring(0, 40) || 'nenhum'}..."
+              </div>
+              
+              {/* Status da Pergunta Atual */}
+              <div className="text-xs text-gray-600 mb-2">
+                <strong>❓ Pergunta Atual:</strong> {currentId} - "{current?.label || 'undefined'}"<br/>
+                <strong>💬 Resposta Atual:</strong> "{answers[currentId] || textareaValue || 'vazio'}"
+              </div>
+              
+              {/* Status do Sistema IA */}
+              <div className="text-xs text-gray-600 mb-2">
+                <strong>🤖 IA:</strong> {Object.keys(answers).length} respostas | 
+                {aiSuggestions.length} sugestões | 
+                {recentAutoFills.length} auto-preenchidas recentes |
+                Auto-avanço: {autoAdvanceEnabled ? '🔄 ON' : '⏸️ OFF'}
+              </div>
+              
+              {/* Sugestões IA Ativas */}
+              {aiSuggestions.length > 0 && (
+                <div className="text-xs text-blue-700 mb-2">
+                  <strong>💡 Sugestões ativas:</strong> {aiSuggestions.map(s => 
+                    `${s.questionId}(${Math.round(s.confidence * 100)}%)`
+                  ).join(', ')}
+                </div>
+              )}
+              
+              {/* Auto-preenchimentos Recentes */}
+              {recentAutoFills.length > 0 && (
+                <div className="text-xs text-green-700 mb-2">
+                  <strong>⚡ Últimos auto-preenchimentos:</strong> {recentAutoFills.join(', ')}
+                </div>
+              )}
+            </div>
+            
+            {/* Botões de Ação */}
+            <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+              <div className="text-xs text-yellow-800 mb-2">
+                <strong>🧪 TESTES DEBUG:</strong> Use estes botões para testar o sistema
               </div>
               <div className="flex justify-end gap-2">
                 <Button
