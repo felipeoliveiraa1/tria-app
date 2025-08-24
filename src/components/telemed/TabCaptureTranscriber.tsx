@@ -309,7 +309,7 @@ export default function TabCaptureTranscriber({ consultationId, onTranscriptionU
                 size="sm"
                 onClick={() => {
                   setAllTranscriptions([]);
-                  setLastTranscription('');
+                  setTotalSegments(0);
                 }}
                 className="text-xs h-6"
               >
