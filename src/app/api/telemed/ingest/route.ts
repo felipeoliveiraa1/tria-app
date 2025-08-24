@@ -7,7 +7,13 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+function getOpenAIClient() {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY environment variable is required');
+  }
+  return new OpenAI({ apiKey });
+}
 
 const EXTRACT_SYSTEM = `
 Você é um extrator clínico especializado em teleconsultas. Dado um trecho de fala (pt-BR) de uma videoconferência médica, atualize um JSON de Anamnese.
@@ -108,6 +114,7 @@ export async function POST(req: Request) {
         fileSize: file.size
       });
       
+      const openai = getOpenAIClient();
       transcript = await openai.audio.transcriptions.create({
         model: 'whisper-1',
         file,
@@ -175,7 +182,8 @@ export async function POST(req: Request) {
       console.log('🧠 [Telemed] Iniciando extração de dados clínicos...');
       
       // Usar chat completions em vez de responses API para maior compatibilidade
-      const completion = await openai.chat.completions.create({
+      const openaiClient = getOpenAIClient();
+      const completion = await openaiClient.chat.completions.create({
         model: 'gpt-4o-mini-2024-07-18',
         messages: [
           { role: 'system', content: EXTRACT_SYSTEM },

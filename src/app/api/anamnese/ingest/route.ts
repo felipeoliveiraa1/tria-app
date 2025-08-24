@@ -6,7 +6,13 @@ import { anamneseJsonSchema, emptyState, mergeAnamnese, AnamneseState } from '@/
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+function getOpenAIClient() {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY environment variable is required');
+  }
+  return new OpenAI({ apiKey });
+}
 
 const SYSTEM_PROMPT = `
 Você é um extrator clínico. Recebe trechos de fala (pt-BR) e atualiza um JSON de Anamnese.
@@ -63,6 +69,7 @@ export async function POST(req: Request) {
     } else {
       try {
         // Chamar OpenAI (sem structured output para compatibilidade)
+        const openai = getOpenAIClient();
         const response = await openai.chat.completions.create({
           model: 'gpt-4o-mini-2024-07-18',
           messages: [
