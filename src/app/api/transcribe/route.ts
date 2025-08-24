@@ -34,7 +34,9 @@ export async function POST(request: NextRequest) {
     const openAIFormData = new FormData()
     openAIFormData.append('file', audioFile)
     openAIFormData.append('model', 'whisper-1')
+    openAIFormData.append('language', 'pt') // Forçar português
     openAIFormData.append('response_format', 'json')
+    openAIFormData.append('prompt', 'Esta é uma consulta médica em português brasileiro. O paciente está falando com o médico sobre seus sintomas e histórico médico.')
 
     // Enviar para OpenAI Whisper
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
@@ -62,8 +64,33 @@ export async function POST(request: NextRequest) {
 
     const result = await response.json()
     
+    // Validar e filtrar o texto transcrito
+    const transcribedText = result.text?.trim() || ''
+    
+    // Filtros para evitar conteúdo estranho
+    const invalidPatterns = [
+      /[^\p{L}\p{N}\p{P}\p{Z}\s]/u, // Caracteres não-latinos/não-padrão
+      /^[^a-zA-ZÀ-ÿ0-9\s]+$/, // Só caracteres especiais
+      /дякую|спасибо|thank you|share.*video.*social.*media/i, // Palavras/frases em outras línguas ou spam
+      /^[\s\p{P}]*$/u, // Só pontuação e espaços
+    ]
+    
+    const isValidText = transcribedText.length > 0 && 
+                       transcribedText.length < 1000 && // Limite razoável
+                       !invalidPatterns.some(pattern => pattern.test(transcribedText))
+    
+    if (!isValidText) {
+      console.warn('Texto inválido filtrado:', transcribedText)
+      return NextResponse.json({
+        text: '', // Retornar vazio se inválido
+        success: true,
+        mock: false,
+        filtered: true
+      })
+    }
+    
     return NextResponse.json({
-      text: result.text,
+      text: transcribedText,
       success: true,
       mock: false
     })

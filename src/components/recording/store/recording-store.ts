@@ -22,6 +22,7 @@ export interface RecordingState {
   level: number
   chunksCount: number
   realtimeConnected: boolean
+  realtimeReconnecting: boolean
   
   // Transcrição
   partialText: string
@@ -48,6 +49,7 @@ export interface RecordingState {
   addFinalSegment: (segment: Omit<TranscriptSegment, 'id' | 'timestamp'>) => void
   updateAudioLevel: (level: number) => void
   setRealtimeConnected: (connected: boolean) => void
+  setRealtimeReconnecting: (reconnecting: boolean) => void
   
   // Utilitários
   getTotalDuration: () => number
@@ -101,6 +103,7 @@ export const useRecordingStore = create<RecordingState>()(
         level: 0,
         chunksCount: 0,
         realtimeConnected: false,
+        realtimeReconnecting: false,
         partialText: '',
         finalSegments: [],
         appointmentId: null,
@@ -333,6 +336,7 @@ export const useRecordingStore = create<RecordingState>()(
             level: 0,
             chunksCount: 0,
             realtimeConnected: false,
+        realtimeReconnecting: false,
             partialText: '',
             finalSegments: [],
             appointmentId: null,
@@ -365,6 +369,10 @@ export const useRecordingStore = create<RecordingState>()(
         
         setRealtimeConnected: (connected: boolean) => {
           set({ realtimeConnected: connected })
+        },
+        
+        setRealtimeReconnecting: (reconnecting: boolean) => {
+          set({ realtimeReconnecting: reconnecting })
         },
         
         // Utilitários

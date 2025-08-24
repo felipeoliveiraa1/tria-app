@@ -1,3 +1,11 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
 export interface Database {
   public: {
     Tables: {
@@ -126,7 +134,7 @@ export interface Database {
           treatment: string | null
           prescription: string | null
           next_appointment: string | null
-          anamnese: any | null
+          anamnese: Json | null
           created_at: string
           updated_at: string
         }

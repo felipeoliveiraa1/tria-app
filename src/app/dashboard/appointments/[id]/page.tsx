@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { RecordingLayout } from "@/components/recording/components/recording-layout"
 import { PatientContextPanel } from "@/components/recording/components/patient-context-panel"
@@ -12,7 +12,8 @@ import { useRecordingStore } from "@/components/recording/store/recording-store"
 import { useRealtimeSTT } from "@/components/recording/hooks/use-realtime-stt"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, FileText, User, Calendar, Clock } from "lucide-react"
-import AnamneseRunner from "@/components/consultations/AnamneseRunner"
+import { AnamneseAIPanel } from "@/components/consultations/AnamneseAIPanel"
+import TabCaptureTranscriber from "@/components/telemed/TabCaptureTranscriber"
 
 interface Consultation {
   id: string
@@ -21,6 +22,7 @@ interface Consultation {
   consultation_type: 'PRESENCIAL' | 'TELEMEDICINA'
   status: string
   created_at: string
+  anamnese?: any
 }
 
 export default function RecordingPage() {
@@ -30,13 +32,16 @@ export default function RecordingPage() {
   
   const [isLoading, setIsLoading] = useState(true)
   const [consultation, setConsultation] = useState<Consultation | null>(null)
+  const anamneseCallbackRef = useRef<((text: string) => void) | null>(null)
+  const lastProcessedSegmentId = useRef<string | null>(null)
   
   const { 
     status, 
     reset, 
     setRealtimeConnected,
     consultationId: storeConsultationId,
-    setConsultationId
+    setConsultationId,
+    finalSegments
   } = useRecordingStore()
   
   const { connect: connectSTT, isSupported } = useRealtimeSTT()
@@ -112,12 +117,33 @@ export default function RecordingPage() {
     loadConsultation()
   }, [consultationId])
 
-  // Conectar ao STT quando iniciar gravação
+  // Conectar ao STT quando iniciar gravação (apenas uma vez)
   useEffect(() => {
-    if (status === 'recording' && isSupported) {
+    if (status === 'recording' && isSupported()) {
+      console.log('🔌 Conectando STT apenas uma vez...')
       connectSTT()
     }
-  }, [status, connectSTT, isSupported])
+  }, [status]) // Remover connectSTT e isSupported das dependências
+
+  // Enviar segmentos finais para anamnese IA
+  useEffect(() => {
+    console.log('useEffect anamnese - finalSegments mudaram:', finalSegments.length)
+    if (anamneseCallbackRef.current && finalSegments.length > 0) {
+      const lastSegment = finalSegments[finalSegments.length - 1]
+      console.log('Último segmento:', lastSegment?.text, 'ID:', lastSegment?.id)
+      console.log('Último processado:', lastProcessedSegmentId.current)
+      
+      if (lastSegment && lastSegment.text && lastSegment.id !== lastProcessedSegmentId.current) {
+        console.log('✅ Enviando novo segmento para anamnese IA:', lastSegment.text)
+        lastProcessedSegmentId.current = lastSegment.id
+        anamneseCallbackRef.current(lastSegment.text)
+      } else {
+        console.log('❌ Segmento não enviado - já processado ou sem texto')
+      }
+    } else {
+      console.log('❌ Callback não registrado ou sem segmentos')
+    }
+  }, [finalSegments])
 
   // Limpar estado ao sair da página
   useEffect(() => {
@@ -254,6 +280,22 @@ export default function RecordingPage() {
       {/* Conteúdo principal */}
       <div className="container mx-auto px-4 py-6">
         <ConsentGuard consented={true}>
+          {/* Componente específico para Telemedicina */}
+          {consultation.consultation_type === 'TELEMEDICINA' && (
+            <div className="mb-6">
+              <TabCaptureTranscriber 
+                consultationId={consultationId}
+                onTranscriptionUpdate={(text) => {
+                  console.log('📞 [Telemedicina] Nova transcrição:', text)
+                  // Enviar transcrição para anamnese IA se callback estiver registrado
+                  if (anamneseCallbackRef.current) {
+                    anamneseCallbackRef.current(text)
+                  }
+                }}
+              />
+            </div>
+          )}
+          
           <RecordingLayout
             topActions={
               <TopActions
@@ -263,16 +305,25 @@ export default function RecordingPage() {
               />
             }
           >
-            {/* Coluna esquerda - Anamnese */}
-            <AnamneseRunner
+            {/* Coluna esquerda - Anamnese com IA */}
+            <AnamneseAIPanel
               consultationId={consultationId}
+              initialAnamnese={consultation.anamnese}
+              onTranscriptReceived={(callback) => {
+                console.log('🔗 Registrando callback de transcrição para anamnese IA')
+                anamneseCallbackRef.current = callback
+                console.log('✅ Callback registrado:', !!anamneseCallbackRef.current)
+              }}
             />
             
             {/* Coluna direita - Transcrição em tempo real */}
             <LiveTranscriptPanel />
           </RecordingLayout>
           
-          <ControlBar consultationId={consultationId} />
+          {/* ControlBar apenas para consultas presenciais */}
+          {consultation.consultation_type === 'PRESENCIAL' && (
+            <ControlBar consultationId={consultationId} />
+          )}
         </ConsentGuard>
       </div>
     </div>

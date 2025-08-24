@@ -1,100 +1,276 @@
-/* Estilos para dar aparência de papel médico real */
-
-.medical-paper {
-  background: linear-gradient(to bottom, #fdfdfd 0%, #f9f9f9 100%);
-  box-shadow: 
-    0 1px 3px rgba(0, 0, 0, 0.1),
-    0 1px 2px rgba(0, 0, 0, 0.06),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.9);
+/* Estilos para simulação de papel médico */
+.anamnese-paper {
+  background: #fff;
+  padding: 2rem;
+  margin: 1rem auto;
+  max-width: 210mm; /* A4 width */
+  box-shadow: 0 0 20px rgba(0,0,0,0.1);
+  font-family: 'Times New Roman', serif;
+  line-height: 1.6;
+  color: #000;
+  min-height: 297mm; /* A4 height */
 }
 
-.medical-paper::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 60px;
-  bottom: 0;
-  width: 2px;
-  background: linear-gradient(to bottom, #ff6b6b 0%, #ff6b6b 50%, transparent 50%, transparent 100%);
-  background-size: 2px 20px;
-  opacity: 0.3;
+.paper-header {
+  text-align: center;
+  border-bottom: 2px solid #000;
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
 }
 
-.medical-paper-lines {
-  background-image: 
-    repeating-linear-gradient(
-      to bottom,
-      transparent 0px,
-      transparent 23px,
-      rgba(59, 130, 246, 0.1) 24px,
-      rgba(59, 130, 246, 0.1) 24px
-    );
+.paper-title {
+  font-size: 1.8rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  letter-spacing: 2px;
 }
 
-.medical-form-field {
+.paper-subtitle {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  margin-top: 1rem;
+}
+
+.anamnese-section {
+  margin-bottom: 2rem;
+  break-inside: avoid;
+}
+
+.section-title {
+  font-weight: bold;
+  font-size: 1.1rem;
+  margin: 1.5rem 0 1rem 0;
+  border-bottom: 1px solid #000;
+  padding-bottom: 0.25rem;
+  text-transform: uppercase;
+}
+
+.section-content {
+  margin-left: 0.5rem;
+}
+
+.anamnese-field-container {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.anamnese-label {
+  font-weight: bold;
+  font-size: 0.95rem;
+  margin-bottom: 0.25rem;
+  color: #333;
+}
+
+.anamnese-field {
+  border-bottom: 1px solid #000;
+  min-height: 1.5rem;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
   position: relative;
-  background: rgba(255, 255, 255, 0.8);
-  border-bottom: 1px dotted #cbd5e1;
   transition: all 0.2s ease;
+  font-size: 0.95rem;
 }
 
-.medical-form-field:hover {
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+.anamnese-field:hover {
+  background-color: #f8f9fa;
 }
 
-.medical-form-field.filled {
-  background: rgba(240, 253, 244, 0.9);
-  border-bottom: 1px solid #10b981;
+/* Tipos de campo */
+.field-short {
+  max-width: 120px;
+  display: inline-block;
 }
 
-.medical-form-field.active {
-  background: rgba(239, 246, 255, 0.9);
-  border-bottom: 2px solid #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+.field-medium {
+  max-width: 300px;
 }
 
-.medical-section-header {
-  background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, transparent 100%);
-  border-left: 4px solid #3b82f6;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  font-weight: 600;
-  color: #1e40af;
+.field-long {
+  width: 100%;
 }
 
-.handwriting-font {
-  font-family: 'Courier New', monospace;
-  letter-spacing: 0.5px;
+.field-textarea {
+  min-height: 3rem;
+  border: 1px solid #000;
+  width: 100%;
+  border-bottom: 1px solid #000;
 }
 
-/* Animação para preenchimento automático */
-@keyframes autofill-glow {
-  0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7); }
-  50% { box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.3); }
-  100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+/* Estados dos campos */
+.field-empty {
+  color: #666;
+  font-style: italic;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 0.5rem,
+    #ddd 0.5rem,
+    #ddd 0.6rem
+  );
 }
 
-.auto-filled {
-  animation: autofill-glow 1s ease-out;
+.field-confirmed {
+  background-color: #d4edda;
+  border-bottom-color: #28a745;
+  border-bottom-width: 2px;
 }
 
-/* Estilo para sugestões da IA */
-.ai-suggestion-card {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(147, 197, 253, 0.05) 100%);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  backdrop-filter: blur(2px);
+.field-high-confidence {
+  background-color: #e8f5e8;
+  border-bottom-color: #6c757d;
 }
 
-.ai-suggestion-button {
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  transition: all 0.2s ease;
+.field-medium-confidence {
+  background-color: #fff3cd;
+  border-bottom-color: #ffc107;
 }
 
-.ai-suggestion-button:hover {
-  background: rgba(239, 246, 255, 0.9);
-  border-color: rgba(59, 130, 246, 0.5);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+.field-low-confidence {
+  background-color: #f8d7da;
+  border-bottom-color: #dc3545;
 }
 
+.field-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.field-value {
+  flex: 1;
+  min-height: 1.2rem;
+}
+
+.field-placeholder {
+  color: #999;
+  font-style: italic;
+}
+
+.field-indicators {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.5rem;
+}
+
+.confirmed-icon {
+  width: 1rem;
+  height: 1rem;
+  color: #28a745;
+}
+
+.edit-icon {
+  width: 0.8rem;
+  height: 0.8rem;
+  color: #6c757d;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.anamnese-field:hover .edit-icon {
+  opacity: 1;
+}
+
+.confidence-badge {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.3rem;
+  height: auto;
+}
+
+.paper-footer {
+  margin-top: 3rem;
+  border-top: 1px solid #000;
+  padding-top: 1rem;
+}
+
+.signature-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.signature-line {
+  font-size: 0.9rem;
+}
+
+/* Responsividade para impressão */
+@media print {
+  .anamnese-paper {
+    box-shadow: none;
+    margin: 0;
+    padding: 1rem;
+  }
+  
+  .field-indicators {
+    display: none;
+  }
+  
+  .anamnese-field:hover {
+    background-color: transparent;
+  }
+}
+
+/* Grid responsivo */
+@media (max-width: 768px) {
+  .anamnese-paper {
+    padding: 1rem;
+    margin: 0.5rem;
+  }
+  
+  .paper-title {
+    font-size: 1.4rem;
+  }
+  
+  /* Usar flexbox para mobile em vez de quebrar grid */
+  .anamnese-paper .grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .anamnese-paper .grid > * {
+    margin-bottom: 0;
+  }
+}
+
+/* Grid layout específico para anamnese quando Tailwind não estiver disponível */
+.anamnese-paper .anamnese-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.anamnese-paper .anamnese-grid-1 {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.anamnese-paper .anamnese-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.anamnese-paper .anamnese-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.anamnese-paper .anamnese-space-y > * + * {
+  margin-top: 1rem;
+}
+
+.anamnese-paper .anamnese-flex {
+  display: flex;
+}
+
+/* Media queries específicas para anamnese */
+@media (min-width: 768px) {
+  .anamnese-paper .anamnese-grid-md-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .anamnese-paper .anamnese-grid-lg-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
