@@ -28,7 +28,7 @@ export function RecordingLayout({ children, topActions, consentGuard }: Recordin
         )}
 
         {/* Grid de duas colunas */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-200px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[600px]">
           {children}
         </div>
       </div>

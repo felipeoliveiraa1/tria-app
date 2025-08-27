@@ -173,3 +173,6 @@ Se encontrar problemas:
 4. Teste a API diretamente via curl
 5. Verifique se o Supabase está configurado corretamente
 
+
+
+

@@ -43,6 +43,7 @@ export async function POST(req: Request) {
     const form = await req.formData();
     const file = form.get('audio') as File | null;
     const consultationId = (form.get('consultationId') as string) || '';
+    const speaker = ((form.get('speaker') as string) || 'patient') as 'doctor' | 'patient';
 
     if (!file) {
       return error({ error: 'Arquivo de áudio é obrigatório' }, 400);
@@ -111,7 +112,8 @@ export async function POST(req: Request) {
         model: 'whisper-1',
         fileType: file.type,
         fileName: file.name,
-        fileSize: file.size
+        fileSize: file.size,
+        speaker
       });
       
       const openai = getOpenAIClient();
@@ -119,9 +121,9 @@ export async function POST(req: Request) {
         model: 'whisper-1',
         file,
         language: 'pt',
-        response_format: 'json',
-        temperature: 0.2, // Mais conservador para teleconsultas
-        prompt: 'Esta é uma teleconsulta médica em português brasileiro entre médico e paciente.' // Contexto para melhor transcrição
+        response_format: 'verbose_json', // inclui segments com timestamps
+        temperature: 0, // Determinístico para melhor consistência
+        prompt: `Esta é uma teleconsulta médica em português brasileiro. Speaker: ${speaker === 'doctor' ? 'médico' : 'paciente'}.`
       });
     } catch (transcriptionError: any) {
       console.error('❌ [Telemed] Erro na transcrição:', transcriptionError);
@@ -148,106 +150,171 @@ export async function POST(req: Request) {
     }
 
     const text = (transcript as any).text as string;
-    console.log('✅ [Telemed] Transcrição concluída:', text.substring(0, 100) + '...');
+    const segments = (transcript as any).segments as Array<{
+      start: number; end: number; text: string; confidence?: number;
+    }> | undefined;
+    
+    console.log('✅ [Telemed] Transcrição concluída:', {
+      text: text.substring(0, 100) + '...',
+      segments: segments?.length || 0,
+      speaker
+    });
 
     if (!text || text.trim().length === 0) {
       console.warn('⚠️ [Telemed] Transcrição vazia, ignorando chunk');
       return json({ ok: true, text: '', message: 'Chunk de áudio vazio ou sem fala detectada' });
     }
 
-    // 2) Carregar estado atual da anamnese
+    // 2) Salvar utterances (falas rotuladas) se há informação de speaker
+    try {
+      if (segments?.length) {
+        const rows = segments.map(s => ({
+          consultation_id: consultationId,
+          speaker,
+          start_ms: Math.round((s.start ?? 0) * 1000),
+          end_ms: Math.round((s.end ?? 0) * 1000),
+          text: s.text ?? '',
+          confidence: s.confidence ?? null,
+        }));
+        const { error: upErr } = await supabaseAdmin.from('utterances').insert(rows);
+        if (upErr) {
+          console.error('❌ [Telemed] Erro ao salvar utterances:', upErr);
+        } else {
+          console.log('💾 [Telemed] Utterances salvas:', rows.length, 'segmentos');
+        }
+      } else {
+        // Salvar como um único utterance se não há segments
+        const { error: upErr } = await supabaseAdmin.from('utterances').insert({
+          consultation_id: consultationId,
+          speaker,
+          text,
+          confidence: null,
+        });
+        if (upErr) {
+          console.error('❌ [Telemed] Erro ao salvar utterance:', upErr);
+        } else {
+          console.log('💾 [Telemed] Utterance salva para speaker:', speaker);
+        }
+      }
+    } catch (utteranceError) {
+      console.error('❌ [Telemed] Erro ao processar utterances:', utteranceError);
+      // Não falhar a requisição por erro de utterance
+    }
+
+    // 3) Carregar estado atual da anamnese (somente se for fala do paciente)
     let current: AnamneseState;
-    try {
-      const { data, error: qErr } = await supabaseAdmin
-        .from('consultations')
-        .select('anamnese')
-        .eq('id', consultationId)
-        .single();
-      
-      if (qErr && qErr.code !== 'PGRST116') {
-        console.error('❌ [Telemed] Erro ao buscar consulta:', qErr);
-        throw qErr;
+    let shouldProcessAnamnese = speaker === 'patient'; // Só processar anamnese para fala do paciente
+    
+    if (shouldProcessAnamnese) {
+      try {
+        const { data, error: qErr } = await supabaseAdmin
+          .from('consultations')
+          .select('anamnese')
+          .eq('id', consultationId)
+          .single();
+        
+        if (qErr && qErr.code !== 'PGRST116') {
+          console.error('❌ [Telemed] Erro ao buscar consulta:', qErr);
+          throw qErr;
+        }
+        
+        current = (data?.anamnese as AnamneseState) ?? emptyState();
+        console.log('📋 [Telemed] Estado atual da anamnese carregado');
+      } catch (dbError) {
+        console.error('❌ [Telemed] Erro de banco de dados:', dbError);
+        throw new Error(`Erro ao carregar anamnese: ${dbError instanceof Error ? dbError.message : 'Erro de banco'}`);
       }
-      
-      current = (data?.anamnese as AnamneseState) ?? emptyState();
-      console.log('📋 [Telemed] Estado atual da anamnese carregado');
-    } catch (dbError) {
-      console.error('❌ [Telemed] Erro de banco de dados:', dbError);
-      throw new Error(`Erro ao carregar anamnese: ${dbError instanceof Error ? dbError.message : 'Erro de banco'}`);
+    } else {
+      current = emptyState();
+      console.log('⏭️ [Telemed] Pulando processamento de anamnese (speaker: doctor)');
     }
 
-    // 3) Extrair informações usando OpenAI com structured output
-    let extracted: AnamneseState;
-    try {
-      console.log('🧠 [Telemed] Iniciando extração de dados clínicos...');
-      
-      // Usar chat completions em vez de responses API para maior compatibilidade
-      const openaiClient = getOpenAIClient();
-      const completion = await openaiClient.chat.completions.create({
-        model: 'gpt-4o-mini-2024-07-18',
-        messages: [
-          { role: 'system', content: EXTRACT_SYSTEM },
-          { role: 'user', content: `Estado atual da anamnese:\n${JSON.stringify(current)}` },
-          { role: 'user', content: `Novo trecho transcrito da teleconsulta:\n"""${text}"""` },
-          { role: 'user', content: 'Retorne APENAS um JSON válido no formato do schema, sem explicações adicionais.' }
-        ],
-        response_format: { type: 'json_object' },
-        temperature: 0.1, // Mais determinístico para dados médicos
-      });
+    // 4) Extrair informações usando OpenAI (somente para fala do paciente)
+    let extracted: AnamneseState = current;
+    let changes = 0;
+    let changedFields: string[] = [];
+    
+    if (shouldProcessAnamnese) {
+      try {
+        console.log('🧠 [Telemed] Iniciando extração de dados clínicos...');
+        
+        // Usar chat completions em vez de responses API para maior compatibilidade
+        const openaiClient = getOpenAIClient();
+        const completion = await openaiClient.chat.completions.create({
+          model: 'gpt-4o-mini-2024-07-18',
+          messages: [
+            { role: 'system', content: EXTRACT_SYSTEM },
+            { role: 'user', content: `Estado atual da anamnese:\n${JSON.stringify(current)}` },
+            { role: 'user', content: `Novo trecho transcrito da teleconsulta (paciente):\n"""${text}"""` },
+            { role: 'user', content: 'Retorne APENAS um JSON válido no formato do schema, sem explicações adicionais.' }
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.1, // Mais determinístico para dados médicos
+        });
 
-      const responseText = completion.choices[0]?.message?.content;
-      if (!responseText) {
-        throw new Error('Resposta vazia da OpenAI');
+        const responseText = completion.choices[0]?.message?.content;
+        if (!responseText) {
+          throw new Error('Resposta vazia da OpenAI');
+        }
+
+        extracted = JSON.parse(responseText) as AnamneseState;
+        console.log('✅ [Telemed] Extração concluída');
+      } catch (extractionError) {
+        console.error('❌ [Telemed] Erro na extração:', extractionError);
+        // Em caso de erro na extração, retornar apenas a transcrição
+        return json({ 
+          ok: true, 
+          speaker,
+          text, 
+          segmentsCount: segments?.length ?? 0,
+          state: current, 
+          error: 'Erro na extração de dados, mas transcrição salva',
+          extractionError: extractionError instanceof Error ? extractionError.message : 'Erro desconhecido'
+        });
       }
-
-      extracted = JSON.parse(responseText) as AnamneseState;
-      console.log('✅ [Telemed] Extração concluída');
-    } catch (extractionError) {
-      console.error('❌ [Telemed] Erro na extração:', extractionError);
-      // Em caso de erro na extração, retornar apenas a transcrição
-      return json({ 
-        ok: true, 
-        text, 
-        state: current, 
-        error: 'Erro na extração de dados, mas transcrição salva',
-        extractionError: extractionError instanceof Error ? extractionError.message : 'Erro desconhecido'
-      });
     }
 
-    // 4) Merge das informações e persistência
-    try {
-      const merged = mergeAnamnese(current, extracted);
-      
-      const { error: updateError } = await supabaseAdmin
-        .from('consultations')
-        .update({ 
-          anamnese: merged,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', consultationId);
-      
-      if (updateError) {
-        console.error('❌ [Telemed] Erro ao atualizar consulta:', updateError);
-        throw updateError;
+    // 5) Merge das informações e persistência (somente se processou anamnese)
+    if (shouldProcessAnamnese) {
+      try {
+        const merged = mergeAnamnese(current, extracted);
+        
+        const { error: updateError } = await supabaseAdmin
+          .from('consultations')
+          .update({ 
+            anamnese: merged,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', consultationId);
+        
+        if (updateError) {
+          console.error('❌ [Telemed] Erro ao atualizar consulta:', updateError);
+          throw updateError;
+        }
+
+        console.log('✅ [Telemed] Anamnese atualizada com sucesso');
+
+        // Calcular diferenças para feedback
+        const changesList = calculateChanges(current, merged);
+        changes = changesList.length;
+        changedFields = changesList;
+
+      } catch (persistenceError) {
+        console.error('❌ [Telemed] Erro na persistência:', persistenceError);
+        throw new Error(`Erro ao salvar: ${persistenceError instanceof Error ? persistenceError.message : 'Erro de banco'}`);
       }
-
-      console.log('✅ [Telemed] Anamnese atualizada com sucesso');
-
-      // Calcular diferenças para feedback
-      const changes = calculateChanges(current, merged);
-
-      return json({ 
-        ok: true, 
-        text, 
-        state: merged,
-        changes: changes.length,
-        changedFields: changes
-      });
-
-    } catch (persistenceError) {
-      console.error('❌ [Telemed] Erro na persistência:', persistenceError);
-      throw new Error(`Erro ao salvar: ${persistenceError instanceof Error ? persistenceError.message : 'Erro de banco'}`);
     }
+
+    return json({ 
+      ok: true, 
+      speaker,
+      text, 
+      segmentsCount: segments?.length ?? 0,
+      state: extracted,
+      changes,
+      changedFields,
+      anamneseProcessed: shouldProcessAnamnese
+    });
 
   } catch (e: any) {
     console.error('❌ [Telemed] Erro geral:', e);

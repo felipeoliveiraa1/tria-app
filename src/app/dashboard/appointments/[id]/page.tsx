@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { RecordingLayout } from "@/components/recording/components/recording-layout"
+
 import { PatientContextPanel } from "@/components/recording/components/patient-context-panel"
 import { LiveTranscriptPanel } from "@/components/recording/components/live-transcript-panel"
 import { ControlBar } from "@/components/recording/components/control-bar"
@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft, FileText, User, Calendar, Clock } from "lucide-react"
 import { AnamneseAIPanel } from "@/components/consultations/AnamneseAIPanel"
 import TabCaptureTranscriber from "@/components/telemed/TabCaptureTranscriber"
+import DualMicTranscriber from "@/components/telemed/DualMicTranscriber"
+import UtterancesTimeline from "@/components/telemed/UtterancesTimeline"
 
 interface Consultation {
   id: string
@@ -216,9 +218,9 @@ export default function RecordingPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 py-4">
+      {/* Header simplificado */}
+      <div className="border-b bg-background">
+        <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Button
@@ -228,101 +230,97 @@ export default function RecordingPage() {
                 className="text-muted-foreground hover:text-foreground"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Voltar ao Dashboard
+                Voltar
               </Button>
               
               <div className="h-6 w-px bg-border" />
               
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                  <User className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-semibold">
-                    Gravação da Consulta
-                  </h1>
-                  <p className="text-sm text-muted-foreground">
-                    {consultation.patient_name} • {consultation.consultation_type}
-                  </p>
-                </div>
+              <div>
+                <h1 className="text-lg font-semibold">
+                  {consultation.patient_name} • {consultation.consultation_type}
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  {new Date(consultation.created_at).toLocaleDateString('pt-BR')} às {new Date(consultation.created_at).toLocaleTimeString('pt-BR')}
+                </p>
               </div>
             </div>
             
-            <div className="flex items-center space-x-2">
-              <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                <span>
-                  {new Date(consultation.created_at).toLocaleDateString('pt-BR')}
-                </span>
-              </div>
-              
-              <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                <Clock className="h-4 w-4" />
-                <span>
-                  {new Date(consultation.created_at).toLocaleTimeString('pt-BR')}
-                </span>
-              </div>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrint}
-                className="ml-4"
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Imprimir
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePrint}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Imprimir
+            </Button>
           </div>
         </div>
       </div>
 
       {/* Conteúdo principal */}
-      <div className="container mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         <ConsentGuard consented={true}>
           {/* Componente específico para Telemedicina */}
           {consultation.consultation_type === 'TELEMEDICINA' && (
-            <div className="mb-6">
-              <TabCaptureTranscriber 
+            <TabCaptureTranscriber 
+              consultationId={consultationId}
+              onTranscriptionUpdate={(text) => {
+                console.log('📞 [Telemedicina] Nova transcrição:', text)
+                // Enviar transcrição para anamnese IA se callback estiver registrado
+                if (anamneseCallbackRef.current) {
+                  anamneseCallbackRef.current(text)
+                }
+              }}
+            />
+          )}
+
+          {/* Componente específico para Presencial com Dois Microfones */}
+          {consultation.consultation_type === 'PRESENCIAL' && (
+            <DualMicTranscriber consultationId={consultationId} />
+          )}
+          
+          {/* Ações superiores */}
+          <div className="flex justify-end mb-4">
+            <TopActions
+              onPrint={handlePrint}
+              onShare={handleShare}
+              onImproveWithAI={handleImproveWithAI}
+            />
+          </div>
+          
+          {/* Grid de duas colunas */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Coluna esquerda - Anamnese com IA */}
+            <div className="space-y-4">
+              <AnamneseAIPanel
                 consultationId={consultationId}
-                onTranscriptionUpdate={(text) => {
-                  console.log('📞 [Telemedicina] Nova transcrição:', text)
-                  // Enviar transcrição para anamnese IA se callback estiver registrado
-                  if (anamneseCallbackRef.current) {
-                    anamneseCallbackRef.current(text)
-                  }
+                initialAnamnese={consultation.anamnese}
+                onTranscriptReceived={(callback) => {
+                  console.log('🔗 Registrando callback de transcrição para anamnese IA')
+                  anamneseCallbackRef.current = callback
+                  console.log('✅ Callback registrado:', !!anamneseCallbackRef.current)
                 }}
               />
             </div>
-          )}
-          
-          <RecordingLayout
-            topActions={
-              <TopActions
-                onPrint={handlePrint}
-                onShare={handleShare}
-                onImproveWithAI={handleImproveWithAI}
-              />
-            }
-          >
-            {/* Coluna esquerda - Anamnese com IA */}
-            <AnamneseAIPanel
-              consultationId={consultationId}
-              initialAnamnese={consultation.anamnese}
-              onTranscriptReceived={(callback) => {
-                console.log('🔗 Registrando callback de transcrição para anamnese IA')
-                anamneseCallbackRef.current = callback
-                console.log('✅ Callback registrado:', !!anamneseCallbackRef.current)
-              }}
-            />
             
-            {/* Coluna direita - Transcrição em tempo real */}
-            <LiveTranscriptPanel />
-          </RecordingLayout>
+            {/* Coluna direita - Timeline de conversas para presencial, transcrição para telemedicina */}
+            <div className="space-y-4">
+              {consultation.consultation_type === 'PRESENCIAL' ? (
+                <UtterancesTimeline consultationId={consultationId} />
+              ) : (
+                <LiveTranscriptPanel />
+              )}
+            </div>
+          </div>
           
-          {/* ControlBar apenas para consultas presenciais */}
+          {/* ControlBar apenas para consultas presenciais com microfone único (fallback) */}
           {consultation.consultation_type === 'PRESENCIAL' && (
-            <ControlBar consultationId={consultationId} />
+            <div className="mt-8 pt-6 border-t">
+              <div className="text-center text-sm text-muted-foreground mb-4">
+                <p>💡 <strong>Opção Alternativa:</strong> Use o controle abaixo se preferir gravação com microfone único</p>
+              </div>
+              <ControlBar consultationId={consultationId} />
+            </div>
           )}
         </ConsentGuard>
       </div>
