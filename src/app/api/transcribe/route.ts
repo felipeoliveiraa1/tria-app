@@ -2,11 +2,15 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 import { NextRequest, NextResponse } from 'next/server'
+import { broadcastTranscription } from '@/lib/broadcast-transcription'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const audioFile = formData.get('audio') as File
+    const speaker = formData.get('speaker') as string
+    const consultationId = formData.get('consultationId') as string
     
     if (!audioFile) {
       return NextResponse.json(
@@ -15,18 +19,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (!consultationId) {
+      return NextResponse.json(
+        { error: 'consultationId é obrigatório' },
+        { status: 400 }
+      )
+    }
+
     // Verificar se a chave da API está configurada
     const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey) {
-      console.warn('Chave da API OpenAI não configurada, usando modo mock')
+      console.warn('Chave da API OpenAI não configurada')
       
-      // Modo mock - simular transcrição
-      const mockTranscription = "Esta é uma transcrição simulada da consulta médica. Em um ambiente de produção, este texto seria gerado pela API da OpenAI usando o modelo Whisper-1."
-      
+      // Retornar erro em vez de mock
       return NextResponse.json({
-        text: mockTranscription,
-        success: true,
-        mock: true
+        text: '',
+        success: false,
+        error: 'Chave da API OpenAI não configurada'
       })
     }
 
@@ -51,14 +60,11 @@ export async function POST(request: NextRequest) {
       const errorData = await response.json()
       console.error('Erro da OpenAI:', errorData)
       
-      // Fallback para modo mock em caso de erro da OpenAI
-      const mockTranscription = "Transcrição simulada devido a erro na API da OpenAI. Arquivo de áudio recebido com sucesso."
-      
+      // Retornar erro em vez de mock
       return NextResponse.json({
-        text: mockTranscription,
-        success: true,
-        mock: true,
-        error: 'Erro na OpenAI, usando transcrição simulada'
+        text: '',
+        success: false,
+        error: `Erro na OpenAI: ${errorData.error?.message || 'Erro desconhecido'}`
       })
     }
 
@@ -88,24 +94,69 @@ export async function POST(request: NextRequest) {
         filtered: true
       })
     }
+
+    // Salvar utterance no banco se temos speaker e consultationId
+    if (speaker && consultationId && transcribedText.trim()) {
+      try {
+        console.log('💾 Salvando utterance diretamente:', { consultationId, speaker, textLength: transcribedText.length })
+        
+        // Salvar diretamente no Supabase
+        const { data, error } = await supabaseAdmin
+          .from('utterances')
+          .insert({
+            consultation_id: consultationId,
+            speaker,
+            text: transcribedText,
+            confidence: null,
+          })
+          .select()
+          .single();
+
+        if (error) {
+          console.warn('⚠️ Erro ao salvar utterance no banco:', error)
+        } else {
+          console.log('✅ Utterance salva com sucesso:', data.id)
+        }
+        
+        // Broadcast em tempo real via SSE (sempre, mesmo se não salvou no banco)
+        broadcastTranscription(consultationId, {
+          type: 'transcription',
+          speaker,
+          text: transcribedText,
+          confidence: null,
+          timestamp: Date.now()
+        })
+        
+      } catch (error) {
+        console.warn('⚠️ Erro ao salvar utterance:', error)
+        
+        // Broadcast mesmo em caso de erro
+        broadcastTranscription(consultationId, {
+          type: 'transcription',
+          speaker,
+          text: transcribedText,
+          confidence: null,
+          timestamp: Date.now()
+        })
+      }
+    }
     
     return NextResponse.json({
       text: transcribedText,
       success: true,
-      mock: false
+      mock: false,
+      speaker,
+      consultationId
     })
 
   } catch (error) {
     console.error('Erro na API de transcrição:', error)
     
-    // Fallback para modo mock em caso de erro geral
-    const mockTranscription = "Transcrição simulada devido a erro interno do servidor. Sistema funcionando em modo de demonstração."
-    
+    // Retornar erro em vez de mock
     return NextResponse.json({
-      text: mockTranscription,
-      success: true,
-      mock: true,
-      error: 'Erro interno, usando transcrição simulada'
+      text: '',
+      success: false,
+      error: `Erro interno: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
     })
   }
 }

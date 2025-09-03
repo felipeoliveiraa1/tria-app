@@ -9,13 +9,13 @@ import { ControlBar } from "@/components/recording/components/control-bar"
 import { ConsentGuard } from "@/components/recording/components/consent-guard"
 import { TopActions } from "@/components/recording/components/top-actions"
 import { useRecordingStore } from "@/components/recording/store/recording-store"
-import { useRealtimeSTT } from "@/components/recording/hooks/use-realtime-stt"
+
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, FileText, User, Calendar, Clock } from "lucide-react"
 import { AnamneseAIPanel } from "@/components/consultations/AnamneseAIPanel"
 import TabCaptureTranscriber from "@/components/telemed/TabCaptureTranscriber"
-import DualMicTranscriber from "@/components/telemed/DualMicTranscriber"
-import UtterancesTimeline from "@/components/telemed/UtterancesTimeline"
+import TranscriberSelector from "@/components/telemed/TranscriberSelector"
+import SuggestedQuestions from "@/components/consultations/SuggestedQuestions"
 
 interface Consultation {
   id: string
@@ -46,7 +46,7 @@ export default function RecordingPage() {
     finalSegments
   } = useRecordingStore()
   
-  const { connect: connectSTT, isSupported } = useRealtimeSTT()
+
 
   // Definir consultationId no store quando a página carregar
   useEffect(() => {
@@ -119,13 +119,7 @@ export default function RecordingPage() {
     loadConsultation()
   }, [consultationId])
 
-  // Conectar ao STT quando iniciar gravação (apenas uma vez)
-  useEffect(() => {
-    if (status === 'recording' && isSupported()) {
-      console.log('🔌 Conectando STT apenas uma vez...')
-      connectSTT()
-    }
-  }, [status]) // Remover connectSTT e isSupported das dependências
+
 
   // Enviar segmentos finais para anamnese IA
   useEffect(() => {
@@ -274,9 +268,9 @@ export default function RecordingPage() {
             />
           )}
 
-          {/* Componente específico para Presencial com Dois Microfones */}
+          {/* Seletor de Sistema de Transcrição para Presencial */}
           {consultation.consultation_type === 'PRESENCIAL' && (
-            <DualMicTranscriber consultationId={consultationId} />
+            <TranscriberSelector consultationId={consultationId} />
           )}
           
           {/* Ações superiores */}
@@ -288,9 +282,9 @@ export default function RecordingPage() {
             />
           </div>
           
-          {/* Grid de duas colunas */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Coluna esquerda - Anamnese com IA */}
+          {/* Grid de três colunas - anamnese, transcrição, sugestões */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 lg:grid-cols-2 gap-6">
+            {/* Coluna 1 - Anamnese com IA */}
             <div className="space-y-4">
               <AnamneseAIPanel
                 consultationId={consultationId}
@@ -303,13 +297,27 @@ export default function RecordingPage() {
               />
             </div>
             
-            {/* Coluna direita - Timeline de conversas para presencial, transcrição para telemedicina */}
+            {/* Coluna 2 - Transcrição em tempo real */}
             <div className="space-y-4">
               {consultation.consultation_type === 'PRESENCIAL' ? (
-                <UtterancesTimeline consultationId={consultationId} />
+                <LiveTranscriptPanel />
               ) : (
                 <LiveTranscriptPanel />
               )}
+            </div>
+
+            {/* Coluna 3 - Sugestões de Perguntas da IA */}
+            <div className="space-y-4 xl:block lg:col-span-2 xl:col-span-1">
+              <SuggestedQuestions
+                consultationId={consultationId}
+                autoRefreshMs={10000}
+                onAsk={(question) => {
+                  console.log('💡 Pergunta sugerida selecionada:', question)
+                  // Aqui você pode implementar a lógica para usar a pergunta
+                  // Por exemplo, focar um campo de input ou ler em voz alta
+                  navigator.clipboard.writeText(question)
+                }}
+              />
             </div>
           </div>
           

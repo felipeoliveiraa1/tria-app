@@ -12,6 +12,7 @@ export interface TranscriptSegment {
   confidence?: number
   isPartial: boolean
   timestamp: Date
+  speaker?: 'doctor' | 'patient' // Informação do speaker
 }
 
 export interface RecordingState {

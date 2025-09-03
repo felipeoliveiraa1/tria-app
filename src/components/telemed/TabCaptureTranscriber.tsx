@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Mic, Square, Monitor, Wifi, WifiOff } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { useRealtimeSTT } from '@/components/recording/hooks/use-realtime-stt';
+import { useDualLivekitSTT } from '@/components/recording/hooks/use-dual-livekit-stt';
 import { useRecordingStore } from '@/components/recording/store/recording-store';
 
 type Props = { 
@@ -24,8 +24,10 @@ export default function TabCaptureTranscriber({ consultationId, onTranscriptionU
   
   const { toast } = useToast();
   
-  // Usar o mesmo sistema de STT da consulta presencial
-  const { connect: connectSTT, disconnect: disconnectSTT, isSupported } = useRealtimeSTT();
+  // Usar o sistema Dual LiveKit para transcrição
+  const dualLiveKit = useDualLivekitSTT({
+    consultationId
+  });
   const { 
     finalSegments, 
     realtimeConnected,
@@ -113,22 +115,19 @@ export default function TabCaptureTranscriber({ consultationId, onTranscriptionU
     
     if (recording) return;
     
-    if (!isSupported()) {
+    if (!dualLiveKit.isSupported()) {
       toast({
-        title: "Web Speech API não suportada",
-        description: "Seu navegador não suporta reconhecimento de voz.",
+        title: "Dual LiveKit não suportado",
+        description: "Seu navegador não suporta WebRTC.",
         variant: "destructive"
       });
       return;
     }
     
-    console.log('🎬 Iniciando transcriração em tempo real com Web Speech API');
+    console.log('🎬 Iniciando transcrição em tempo real com Dual LiveKit');
     
-    // Configurar o áudio do stream capturado como fonte para o microfone (isso pode não funcionar diretamente)
-    // Como alternativa, usaremos o Web Speech API normalmente e assumiremos que está capturando áudio da aba
-    
-    // Conectar ao Web Speech API
-    connectSTT();
+    // Conectar ao Dual LiveKit
+    dualLiveKit.connect();
     setRecording(true);
 
     // Se o usuário parar o compartilhamento da aba, paramos também
@@ -146,21 +145,21 @@ export default function TabCaptureTranscriber({ consultationId, onTranscriptionU
 
     toast({
       title: "Transcrição iniciada!",
-      description: "Reconhecimento de voz ativado para a teleconsulta.",
+      description: "LiveKit ativado para transcrição em tempo real.",
     });
   }
 
   function stop() {
-    disconnectSTT();
+    dualLiveKit.disconnect();
     setRecording(false);
     
     toast({
       title: "Transcrição parada",
-      description: "O reconhecimento de voz foi interrompido.",
+      description: "O Dual LiveKit foi desconectado.",
     });
   }
 
-  // Monitorar segmentos finais do Web Speech API
+  // Monitorar segmentos finais do LiveKit
   useEffect(() => {
     if (finalSegments.length > totalSegments) {
       const newSegments = finalSegments.slice(totalSegments);
@@ -171,7 +170,7 @@ export default function TabCaptureTranscriber({ consultationId, onTranscriptionU
         setAllTranscriptions(prev => [...prev, transcriptionText]);
         onTranscriptionUpdate?.(transcriptionText);
         
-        console.log('📝 [Telemedicina] Nova transcrição (Web Speech):', transcriptionText);
+        console.log('📝 [Telemedicina] Nova transcrição (LiveKit):', transcriptionText);
         
         toast({
           title: "Transcrição recebida",
@@ -188,13 +187,13 @@ export default function TabCaptureTranscriber({ consultationId, onTranscriptionU
   useEffect(() => {
     return () => {
       if (recording) {
-        disconnectSTT();
+        dualLiveKit.disconnect();
       }
       if (stream) {
         stream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
       }
     };
-  }, [recording, stream, disconnectSTT]);
+  }, [recording, stream, dualLiveKit]);
 
   const getStatusIcon = () => {
     switch (connectionStatus) {
@@ -210,17 +209,17 @@ export default function TabCaptureTranscriber({ consultationId, onTranscriptionU
   };
 
   const getStatusText = () => {
-    if (realtimeReconnecting) return 'Reconectando reconhecimento de voz...';
-    if (recording && realtimeConnected) return 'Transcrevendo em tempo real';
-    if (recording && !realtimeConnected) return 'Aguardando conexão do reconhecimento...';
+    if (dualLiveKit.isConnecting) return 'Conectando ao Dual LiveKit...';
+    if (recording && dualLiveKit.isConnected) return 'Transcrevendo em tempo real';
+    if (recording && !dualLiveKit.isConnected) return 'Aguardando conexão do Dual LiveKit...';
     if (stream) return 'Aba conectada - Pronto para transcrever';
     return 'Nenhuma aba selecionada';
   };
 
   const getStatusColor = () => {
-    if (realtimeReconnecting) return 'text-amber-600';
-    if (recording && realtimeConnected) return 'text-green-600';
-    if (recording && !realtimeConnected) return 'text-orange-600';
+    if (dualLiveKit.isConnecting) return 'text-amber-600';
+    if (recording && dualLiveKit.isConnected) return 'text-green-600';
+    if (recording && !dualLiveKit.isConnected) return 'text-orange-600';
     if (stream) return 'text-blue-600';
     if (connectionStatus === 'error') return 'text-red-600';
     return 'text-gray-600';
@@ -255,8 +254,8 @@ export default function TabCaptureTranscriber({ consultationId, onTranscriptionU
             </p>
             {totalSegments > 0 && (
               <p className="text-xs text-muted-foreground">
-                {totalSegments} segmentos transcritos • Web Speech API
-                {realtimeReconnecting && ' • Reconectando...'}
+                {totalSegments} segmentos transcritos • Dual LiveKit
+                {dualLiveKit.isConnecting && ' • Conectando...'}
               </p>
             )}
             {lastError && (
@@ -281,7 +280,7 @@ export default function TabCaptureTranscriber({ consultationId, onTranscriptionU
           
           <Button
             onClick={start}
-            disabled={!stream || recording || !isSupported()}
+            disabled={!stream || recording || !dualLiveKit.isSupported()}
             className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white"
           >
             <Mic className="h-4 w-4" />
@@ -341,7 +340,7 @@ export default function TabCaptureTranscriber({ consultationId, onTranscriptionU
           <p>2. ⚠️ <strong>CRÍTICO:</strong> Marque "Compartilhar áudio" na caixa de diálogo</p>
           <p>3. Clique em "Iniciar transcrição" para ativar o reconhecimento de voz</p>
           <p>4. Fale próximo ao microfone para capturar sua voz durante a teleconsulta</p>
-          <p className="text-green-600 font-medium">✨ Usa Web Speech API para transcrição em tempo real</p>
+          <p className="text-green-600 font-medium">✨ Usa Dual LiveKit para transcrição em tempo real</p>
           <p className="text-blue-600 font-medium">🤖 OpenAI processa as transcrições para extrair dados da anamnese</p>
         </div>
       </CardContent>

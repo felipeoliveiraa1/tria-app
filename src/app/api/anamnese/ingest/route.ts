@@ -108,11 +108,19 @@ export async function POST(req: Request) {
 
     // 4) Persistir (se houver consultationId)
     if (consultationId) {
-      const { error: upErr } = await supabaseAdmin
-        .from('consultations')
-        .update({ anamnese: merged })
-        .eq('id', consultationId);
-      if (upErr) throw upErr;
+      try {
+        const { error: upErr } = await supabaseAdmin
+          .from('consultations')
+          .update({ anamnese: merged })
+          .eq('id', consultationId);
+        if (upErr) {
+          console.warn('Erro ao salvar anamnese no banco:', upErr);
+          // Não falhar se não conseguir salvar no banco
+        }
+      } catch (dbError) {
+        console.warn('Erro de conexão com banco:', dbError);
+        // Continuar mesmo se não conseguir salvar
+      }
     }
 
     // 5) Sinalizar quais campos mudaram (delta simples, opcional)
