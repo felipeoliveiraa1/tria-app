@@ -5,12 +5,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { broadcastTranscription } from '@/lib/broadcast-transcription'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
+// Store em memória para mapeamento de microfones (em produção usar Redis)
+const micBinding = new Map<string, Map<string, { mic1: string, mic2: string }>>()
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const audioFile = formData.get('audio') as File
     const speaker = formData.get('speaker') as string
     const consultationId = formData.get('consultationId') as string
+    const clientId = request.headers.get('x-client-id') || 'default'
     
     if (!audioFile) {
       return NextResponse.json(
@@ -24,6 +28,42 @@ export async function POST(request: NextRequest) {
         { error: 'consultationId é obrigatório' },
         { status: 400 }
       )
+    }
+
+    // Validar speaker locking
+    if (!speaker || !['doctor', 'patient'].includes(speaker)) {
+      return NextResponse.json(
+        { error: 'speaker deve ser "doctor" ou "patient"' },
+        { status: 400 }
+      )
+    }
+
+    // Verificar se o mapeamento de microfones está configurado
+    const consultationBindings = micBinding.get(consultationId)
+    if (!consultationBindings) {
+      console.warn(`⚠️ Mapeamento de microfones não encontrado para consulta: ${consultationId}`)
+      // Permitir primeira configuração
+      micBinding.set(consultationId, new Map())
+    }
+
+    const clientBindings = micBinding.get(consultationId)?.get(clientId)
+    if (clientBindings) {
+      // Validar se o speaker está correto para este cliente
+      const expectedSpeaker = clientBindings.mic1 === 'doctor' ? 'doctor' : 'patient'
+      if (speaker !== expectedSpeaker) {
+        console.error(`❌ Speaker locking violation: esperado ${expectedSpeaker}, recebido ${speaker}`)
+        return NextResponse.json(
+          { error: `Speaker locking violation: esperado ${expectedSpeaker}` },
+          { status: 400 }
+        )
+      }
+    } else {
+      // Primeira vez - configurar mapeamento
+      console.log(`🔧 Configurando mapeamento de microfones para ${clientId}: ${speaker}`)
+      micBinding.get(consultationId)?.set(clientId, {
+        mic1: speaker,
+        mic2: speaker === 'doctor' ? 'patient' : 'doctor'
+      })
     }
 
     // Verificar se a chave da API está configurada
@@ -45,7 +85,7 @@ export async function POST(request: NextRequest) {
     openAIFormData.append('model', 'whisper-1')
     openAIFormData.append('language', 'pt') // Forçar português
     openAIFormData.append('response_format', 'json')
-    openAIFormData.append('prompt', 'Esta é uma consulta médica em português brasileiro. O paciente está falando com o médico sobre seus sintomas e histórico médico.')
+    // Removido prompt que estava causando transcrições genéricas
 
     // Enviar para OpenAI Whisper
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
@@ -145,8 +185,9 @@ export async function POST(request: NextRequest) {
       text: transcribedText,
       success: true,
       mock: false,
-      speaker,
-      consultationId
+      speaker, // Ecoar o speaker recebido (não re-atribuir)
+      consultationId,
+      clientId
     })
 
   } catch (error) {

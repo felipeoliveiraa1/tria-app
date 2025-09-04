@@ -41,6 +41,10 @@ export default function TabCaptureTranscriber({ consultationId, onTranscriptionU
     setConsultationId(consultationId);
   }, [consultationId, setConsultationId]);
 
+  // Não iniciar captura automaticamente - aguardar interação do usuário
+  const [userInitiated, setUserInitiated] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
   async function pickTab() {
     try {
       setConnectionStatus('connecting');
@@ -238,9 +242,11 @@ export default function TabCaptureTranscriber({ consultationId, onTranscriptionU
           )}
         </CardTitle>
         <CardDescription>
-          Selecione a aba da videoconferência e marque <strong>Compartilhar áudio</strong>.
+          <span className="text-amber-700 font-medium">⚠️ ATENÇÃO:</span> Este sistema captura áudio de abas do navegador.
           <br />
-          Recomendado: Chrome ou Edge para melhor compatibilidade.
+          Use apenas para videoconferências médicas. Selecione a aba correta e marque <strong>Compartilhar áudio</strong>.
+          <br />
+          <span className="text-sm text-muted-foreground">Recomendado: Chrome ou Edge para melhor compatibilidade.</span>
         </CardDescription>
       </CardHeader>
       
@@ -269,7 +275,7 @@ export default function TabCaptureTranscriber({ consultationId, onTranscriptionU
         {/* Controles */}
         <div className="flex flex-wrap gap-2">
           <Button
-            onClick={pickTab}
+            onClick={() => setShowConfirmDialog(true)}
             disabled={recording}
             variant="outline"
             className="flex items-center space-x-2"
@@ -344,6 +350,45 @@ export default function TabCaptureTranscriber({ consultationId, onTranscriptionU
           <p className="text-blue-600 font-medium">🤖 OpenAI processa as transcrições para extrair dados da anamnese</p>
         </div>
       </CardContent>
+      
+      {/* Modal de confirmação */}
+      {showConfirmDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4">Confirmar Captura de Aba</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Você está prestes a capturar áudio de uma aba do navegador. Isso pode incluir:
+            </p>
+            <ul className="text-sm text-gray-600 mb-6 list-disc list-inside space-y-1">
+              <li>Áudio de videoconferências (Teams, Zoom, Meet)</li>
+              <li>Vídeos do YouTube ou outras plataformas</li>
+              <li>Qualquer áudio reproduzido na aba selecionada</li>
+            </ul>
+            <p className="text-sm font-medium text-amber-700 mb-6">
+              ⚠️ Certifique-se de selecionar apenas a aba da consulta médica e marcar "Compartilhar áudio".
+            </p>
+            <div className="flex space-x-3">
+              <Button
+                onClick={() => {
+                  setShowConfirmDialog(false);
+                  setUserInitiated(true);
+                  pickTab();
+                }}
+                className="flex-1"
+              >
+                Continuar
+              </Button>
+              <Button
+                onClick={() => setShowConfirmDialog(false)}
+                variant="outline"
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

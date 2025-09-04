@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Mic, MicOff, Users, RefreshCw, Zap, User, Stethoscope, MessageCircle } from 'lucide-react';
 import { useDualLivekitSTT } from '@/components/recording/hooks/use-dual-livekit-stt';
 import { useRecordingStore } from '@/components/recording/store/recording-store';
+import { DebugOverlay } from './DebugOverlay';
 
 type Props = {
   consultationId: string;
@@ -28,22 +29,21 @@ export default function DualMicLiveKitTranscriber({ consultationId }: Props) {
   }, []); // Corrigido: remove loop infinito
 
   const handleConnect = () => {
-    // Permitir conexão com pelo menos um microfone
-    if (!dualLiveKit.doctorMic && !dualLiveKit.patientMic) {
-      alert('Por favor, selecione pelo menos um microfone (médico ou paciente)');
+    // Verificar se ambos os microfones estão mapeados
+    if (!dualLiveKit.doctorMic || !dualLiveKit.patientMic) {
+      alert('Por favor, selecione os dois microfones (médico e paciente) para iniciar a transcrição');
       return;
     }
     
-    // Avisar se apenas um microfone está selecionado
-    if (!dualLiveKit.doctorMic || !dualLiveKit.patientMic) {
-      const missingMic = !dualLiveKit.doctorMic ? 'médico' : 'paciente';
-      const availableMic = !dualLiveKit.doctorMic ? 'paciente' : 'médico';
-      if (confirm(`Apenas o microfone do ${availableMic} está selecionado. Deseja continuar em modo single-mic?`)) {
-        dualLiveKit.connect();
-      }
-    } else {
-      dualLiveKit.connect();
+    // Salvar mapeamento antes de conectar
+    if (dualLiveKit.saveMicMap) {
+      dualLiveKit.saveMicMap({
+        doctorDeviceId: dualLiveKit.doctorMic,
+        patientDeviceId: dualLiveKit.patientMic
+      });
     }
+    
+    dualLiveKit.connect();
   };
 
   const getDoctorMicLabel = () => {
@@ -250,9 +250,11 @@ export default function DualMicLiveKitTranscriber({ consultationId }: Props) {
                 onClick={handleConnect}
                 disabled={
                   dualLiveKit.isConnecting || 
-                  (!dualLiveKit.doctorMic && !dualLiveKit.patientMic) ||
+                  !dualLiveKit.doctorMic || 
+                  !dualLiveKit.patientMic ||
                   !dualLiveKit.isSupported()
                 }
+                title={(!dualLiveKit.doctorMic || !dualLiveKit.patientMic) ? "Selecione os dois microfones para iniciar" : ""}
                 className="bg-purple-600 hover:bg-purple-700"
               >
                 <Mic className="h-4 w-4 mr-2" />
@@ -409,6 +411,17 @@ export default function DualMicLiveKitTranscriber({ consultationId }: Props) {
           </div>
         </CardContent>
       </Card>
+      
+      {/* Debug Overlay */}
+      <DebugOverlay 
+        doctorActive={false}
+        patientActive={false}
+        doctorRms={0}
+        patientRms={0}
+        doctorFloorHold={0}
+        patientFloorHold={0}
+        currentSpeaker={undefined}
+      />
     </div>
   );
 }

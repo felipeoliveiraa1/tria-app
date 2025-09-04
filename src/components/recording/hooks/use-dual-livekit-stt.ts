@@ -1,6 +1,9 @@
 import { useCallback, useRef, useState, useEffect } from 'react'
 import { Room, RoomEvent, Track, LocalAudioTrack } from 'livekit-client'
 import { useRecordingStore } from '../store/recording-store'
+import { createVADNode, VADMessage } from '@/audio/vad-node'
+import { SpeechSegmenter, SpeechSegment } from '@/audio/speech-segmenter'
+import { makeMultipart } from '@/audio/audio-utils'
 
 interface DualLiveKitSTTConfig {
   consultationId: string
@@ -40,8 +43,22 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
   const isReconnectingRef = useRef(false)
   const doctorStreamRef = useRef<MediaStream | null>(null)
   const patientStreamRef = useRef<MediaStream | null>(null)
-  const lastTranscriptionRef = useRef<{doctor: string, patient: string}>({doctor: '', patient: ''})
+  const lastTranscriptionRef = useRef<{doctor: string | undefined, patient: string | undefined}>({doctor: undefined, patient: undefined})
   const processedTranscriptionsRef = useRef<Set<string>>(new Set())
+  
+  // VAD e Speech Segmentation
+  const doctorVADRef = useRef<any>(null)
+  const patientVADRef = useRef<any>(null)
+  const doctorSegmenterRef = useRef<SpeechSegmenter | null>(null)
+  const patientSegmenterRef = useRef<SpeechSegmenter | null>(null)
+  const doctorAudioContextRef = useRef<AudioContext | null>(null)
+  const patientAudioContextRef = useRef<AudioContext | null>(null)
+  
+  // Floor control
+  const doctorActiveRef = useRef(false)
+  const patientActiveRef = useRef(false)
+  const doctorFloorHoldRef = useRef(0)
+  const patientFloorHoldRef = useRef(0)
   
   const { 
     addFinalSegment, 
@@ -547,6 +564,40 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
     return similarity > 0.8
   }, [])
 
+  // Função para detectar textos repetitivos ou automáticos
+  const isRepetitiveText = useCallback((text: string): boolean => {
+    const cleanText = text.toLowerCase().trim()
+    
+    // Padrões de texto repetitivo
+    const repetitivePatterns = [
+      /^(não!?\s*){3,}/i, // "não não não"
+      /^(sim!?\s*){3,}/i, // "sim sim sim"
+      /^(\w+!?\s*)\1{2,}/i, // qualquer palavra repetida 3x
+      /^(ok|okay|tá|certo|uhum)\s*$/i, // palavras muito curtas/automáticas
+      /^[.!?]{2,}$/, // só pontuação
+    ]
+    
+    if (repetitivePatterns.some(pattern => pattern.test(cleanText))) {
+      return true
+    }
+    
+    // Verificar repetição excessiva de palavras
+    const words = cleanText.split(/\s+/)
+    if (words.length >= 3) {
+      const wordCount = words.reduce((acc, word) => {
+        acc[word] = (acc[word] || 0) + 1
+        return acc
+      }, {} as Record<string, number>)
+      
+      const maxFrequency = Math.max(...Object.values(wordCount))
+      if (maxFrequency / words.length > 0.6) { // Se uma palavra aparece mais de 60%
+        return true
+      }
+    }
+    
+    return false
+  }, [])
+
   // Carregar dispositivos de áudio disponíveis
   const loadDevices = useCallback(async () => {
     try {
@@ -723,8 +774,26 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
             // Limitar o tamanho do conjunto para evitar vazamento de memória
             if (processedTranscriptionsRef.current.size > 100) {
               const firstItem = processedTranscriptionsRef.current.values().next().value
-              processedTranscriptionsRef.current.delete(firstItem)
+              if (firstItem) {
+                processedTranscriptionsRef.current.delete(firstItem)
+              }
             }
+            
+            // Filtrar textos repetitivos e automáticos
+            if (isRepetitiveText(result.text)) {
+              console.log(`🚫 Texto repetitivo filtrado no processamento (${speaker}):`, result.text)
+              return
+            }
+            
+            // Verificar se é muito similar à última transcrição
+            const lastSpeakerText = lastTranscriptionRef.current[speaker]
+            if (lastSpeakerText && isSimilarTranscription(result.text, lastSpeakerText)) {
+              console.log(`🚫 Texto similar filtrado no processamento (${speaker}):`, result.text)
+              return
+            }
+            
+            // Atualizar última transcrição
+            lastTranscriptionRef.current[speaker] = result.text
             
             // Adicionar segmento final ao store com informação do speaker
             addFinalSegment({
@@ -735,9 +804,6 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
               isPartial: false,
               speaker: speaker // Incluir informação do speaker
             })
-            
-            // Atualizar referência da última transcrição
-            lastTranscriptionRef.current[speaker] = result.text
             
             console.log(`🏪 Segmento adicionado ao store: ${speaker} - "${result.text}" (confiança: ${confidence})`)
           }
@@ -789,6 +855,22 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
 
         if (data.type === 'transcription') {
           console.log(`📝 Transcrição recebida via SSE (${data.speaker}):`, data.text)
+          
+          // Filtrar textos repetitivos e automáticos
+          if (isRepetitiveText(data.text)) {
+            console.log('🚫 Texto repetitivo filtrado via SSE:', data.text)
+            return
+          }
+          
+          // Verificar se é muito similar à última transcrição
+          const lastSpeakerText = lastTranscriptionRef.current[data.speaker as 'doctor' | 'patient']
+          if (lastSpeakerText && isSimilarTranscription(data.text, lastSpeakerText)) {
+            console.log('🚫 Texto similar filtrado via SSE:', data.text)
+            return
+          }
+          
+          // Atualizar última transcrição
+          lastTranscriptionRef.current[data.speaker as 'doctor' | 'patient'] = data.text
           
           // Adicionar segmento final ao store com informação do speaker
           addFinalSegment({
@@ -850,12 +932,15 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
           deviceId: { exact: deviceId },
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 48000,
+          autoGainControl: false, // Desabilitar AGC para evitar "inventar" voz do ruído
+          sampleRate: 16000, // Reduzir para 16kHz para economizar banda
           channelCount: 1
         }
       })
 
+      // Usar MediaRecorder nativo para capturar áudio em formato WebM
+      console.log(`🎤 Configurando MediaRecorder para ${speaker}`)
+      
       // Verificar se MediaRecorder é suportado
       if (!window.MediaRecorder) {
         throw new Error('MediaRecorder não é suportado neste navegador')
@@ -912,7 +997,7 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
 
       mediaRecorder.onstop = async () => {
         if (chunksRef.current.length > 0 && !processingRef.current[speaker]) {
-          const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' })
+          const audioBlob = new Blob(chunksRef.current, { type: mimeType })
           await processAudioChunk(audioBlob, speaker)
           chunksRef.current = []
         }
@@ -939,7 +1024,9 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
       setError(`Erro ao acessar microfone do ${speaker}`)
       return null
     }
-  }, [processAudioChunk])
+  }, [])
+
+  // Função sendSpeechSegment removida - usando MediaRecorder nativo agora
 
   // Conectar ao LiveKit e iniciar transcrição
   const connect = useCallback(async () => {
@@ -1081,6 +1168,22 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
             console.log('📨 Transcrição recebida via SSE:', data)
             console.log('🏪 Debug addFinalSegment:', data.text, data.speaker)
             
+            // Filtrar textos repetitivos e automáticos
+            if (isRepetitiveText(data.text)) {
+              console.log('🚫 Texto repetitivo filtrado via SSE (debug):', data.text)
+              return
+            }
+            
+            // Verificar se é muito similar à última transcrição
+            const lastSpeakerText = lastTranscriptionRef.current[data.speaker as 'doctor' | 'patient']
+            if (lastSpeakerText && isSimilarTranscription(data.text, lastSpeakerText)) {
+              console.log('🚫 Texto similar filtrado via SSE (debug):', data.text)
+              return
+            }
+            
+            // Atualizar última transcrição
+            lastTranscriptionRef.current[data.speaker as 'doctor' | 'patient'] = data.text
+            
             // Atualizar UI em tempo real com informação do speaker
             addFinalSegment({
               text: data.text,
@@ -1150,13 +1253,34 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
       patientIntervalRef.current = null
     }
     
-    // Parar MediaRecorders
-    if (doctorRecorderRef.current && doctorRecorderRef.current.state !== 'inactive') {
-      doctorRecorderRef.current.stop()
+    // Desconectar VAD nodes
+    if (doctorVADRef.current) {
+      doctorVADRef.current.disconnect()
+      doctorVADRef.current = null
     }
-    
-    if (patientRecorderRef.current && patientRecorderRef.current.state !== 'inactive') {
-      patientRecorderRef.current.stop()
+    if (patientVADRef.current) {
+      patientVADRef.current.disconnect()
+      patientVADRef.current = null
+    }
+
+    // Fechar AudioContexts
+    if (doctorAudioContextRef.current) {
+      doctorAudioContextRef.current.close()
+      doctorAudioContextRef.current = null
+    }
+    if (patientAudioContextRef.current) {
+      patientAudioContextRef.current.close()
+      patientAudioContextRef.current = null
+    }
+
+    // Reset segmenters
+    if (doctorSegmenterRef.current) {
+      doctorSegmenterRef.current.reset()
+      doctorSegmenterRef.current = null
+    }
+    if (patientSegmenterRef.current) {
+      patientSegmenterRef.current.reset()
+      patientSegmenterRef.current = null
     }
     
     // Parar streams

@@ -163,11 +163,15 @@ export function useImprovedSTT() {
           if (finalTranscript && finalTranscript.trim().length > 0) {
             const cleanText = finalTranscript.trim()
             
-            // Filtros básicos
+            // Filtros avançados para evitar conteúdo repetitivo e automático
             const invalidPatterns = [
               /дякую|спасибо|thank you|share.*video.*social.*media/i,
               /^[\s\p{P}]*$/u,
-              /[^\p{L}\p{N}\p{P}\p{Z}\s]/u
+              /[^\p{L}\p{N}\p{P}\p{Z}\s]/u,
+              /^(não!?\s*){3,}/i, // Repetições de "não"
+              /^(sim!?\s*){3,}/i, // Repetições de "sim"
+              /^(\w+!?\s*)\1{2,}/i, // Qualquer palavra repetida 3 ou mais vezes
+              /^(até\s+(à\s+)?próxima|desculpa|obrigad[oa])\s*$/i, // Frases automáticas
             ]
             
             const isValid = !invalidPatterns.some(pattern => pattern.test(cleanText)) && 
