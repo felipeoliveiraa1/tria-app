@@ -35,14 +35,6 @@ export default function DualMicLiveKitTranscriber({ consultationId }: Props) {
       return;
     }
     
-    // Salvar mapeamento antes de conectar
-    if (dualLiveKit.saveMicMap) {
-      dualLiveKit.saveMicMap({
-        doctorDeviceId: dualLiveKit.doctorMic,
-        patientDeviceId: dualLiveKit.patientMic
-      });
-    }
-    
     dualLiveKit.connect();
   };
 

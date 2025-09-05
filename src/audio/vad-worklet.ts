@@ -1,3 +1,5 @@
+/// <reference path="../types/webaudio.d.ts" />
+
 class VADProcessor extends AudioWorkletProcessor {
   private active = false;
   private above = 0;
