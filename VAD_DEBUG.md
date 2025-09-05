@@ -53,3 +53,4 @@ O overlay de debug exibe:
 ✅ **Baixa latência** - segmentação inteligente
 ✅ **Alta qualidade** - múltiplas validações
 
+
