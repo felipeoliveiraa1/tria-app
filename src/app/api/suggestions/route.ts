@@ -7,8 +7,6 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const runtime = 'nodejs';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-
 type Body = {
   consultationId?: string;
   transcriptWindow?: string; // opcional: se você quiser mandar manualmente um trecho consolidado
@@ -18,6 +16,12 @@ type Body = {
 
 export async function POST(req: Request) {
   try {
+    // Verificar se a API key está disponível
+    if (!process.env.OPENAI_API_KEY) {
+      return json({ error: 'OPENAI_API_KEY não configurada' }, 500);
+    }
+
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const { consultationId, transcriptWindow, maxUtterances = 30, minutesLookback = 6 } = await req.json() as Body;
 
     if (!consultationId && !transcriptWindow) {
