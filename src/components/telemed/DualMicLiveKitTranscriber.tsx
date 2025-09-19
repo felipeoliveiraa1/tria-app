@@ -29,12 +29,23 @@ export default function DualMicLiveKitTranscriber({ consultationId }: Props) {
   }, []); // Corrigido: remove loop infinito
 
   const handleConnect = () => {
+    console.log('🔗 Tentando conectar Dual LiveKit para telemedicina...')
+    console.log('🔍 Estado atual:', {
+      doctorMic: dualLiveKit.doctorMic,
+      patientMic: dualLiveKit.patientMic,
+      isConnecting: dualLiveKit.isConnecting,
+      isConnected: dualLiveKit.isConnected,
+      devices: dualLiveKit.devices?.length || 0
+    })
+    
     // Verificar se ambos os microfones estão mapeados
     if (!dualLiveKit.doctorMic || !dualLiveKit.patientMic) {
+      console.warn('⚠️ Microfones não selecionados')
       alert('Por favor, selecione os dois microfones (médico e paciente) para iniciar a transcrição');
       return;
     }
     
+    console.log('✅ Microfones selecionados, conectando...')
     dualLiveKit.connect();
   };
 
@@ -47,6 +58,36 @@ export default function DualMicLiveKitTranscriber({ consultationId }: Props) {
     const device = dualLiveKit.devices.find(d => d.deviceId === dualLiveKit.patientMic);
     return device ? device.label : 'Nenhum selecionado';
   };
+
+  const testLiveKitConfig = async () => {
+    console.log('🔍 Testando configuração do LiveKit...')
+    
+    try {
+      const response = await fetch('/api/livekit/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          consultationId: consultationId,
+          participantName: 'test-telemed',
+          role: 'doctor'
+        })
+      })
+      
+      const data = await response.json()
+      console.log('📡 Resposta da API LiveKit:', data)
+      
+      if (data.mock) {
+        console.warn('⚠️ LiveKit em modo mock - variáveis não configuradas')
+        alert('LiveKit não configurado! Verifique as variáveis de ambiente na Vercel.')
+      } else {
+        console.log('✅ LiveKit configurado corretamente')
+        alert('LiveKit configurado! Token gerado com sucesso.')
+      }
+    } catch (error) {
+      console.error('❌ Erro ao testar LiveKit:', error)
+      alert('Erro ao testar LiveKit: ' + error.message)
+    }
+  }
 
   const getStatusBadge = () => {
     if (dualLiveKit.isConnecting) {
@@ -263,6 +304,14 @@ export default function DualMicLiveKitTranscriber({ consultationId }: Props) {
                 Desconectar
               </Button>
             )}
+
+            <Button 
+              onClick={testLiveKitConfig}
+              variant="outline"
+              size="sm"
+            >
+              🔍 Testar LiveKit
+            </Button>
           </div>
 
           {/* Informações Técnicas */}
