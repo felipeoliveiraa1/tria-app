@@ -66,34 +66,11 @@ export async function GET(request: Request) {
 
     // Verificar variáveis de ambiente
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      console.warn('⚠️ API - Variáveis do Supabase não configuradas, retornando mock')
-      const mockConsultation = {
-        id: id,
-        doctor_id: 'mock-doctor',
-        patient_id: 'mock-patient',
-        patient_name: 'Paciente Mock',
-        patient_context: 'Contexto mock da consulta',
-        consultation_type: 'PRESENCIAL',
-        status: 'CREATED',
-        duration: null,
-        recording_url: null,
-        notes: null,
-        diagnosis: null,
-        treatment: null,
-        prescription: null,
-        next_appointment: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-      
-      const res = NextResponse.json({ 
-        consultation: mockConsultation, 
-        success: true, 
-        source: 'mock',
-        message: 'Modo mock - Supabase não configurado'
-      })
-      res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
-      return res
+      console.error('❌ API - Variáveis do Supabase não configuradas')
+      return NextResponse.json({ 
+        error: 'Configuração do Supabase não encontrada',
+        message: 'Verifique as variáveis de ambiente NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY'
+      }, { status: 500 })
     }
 
     const cookieStore = await cookies()
@@ -136,34 +113,11 @@ export async function GET(request: Request) {
     }
     
     if (!doctorId) {
-      console.warn('⚠️ API - Usuário não autenticado, retornando mock')
-      const mockConsultation = {
-        id: id,
-        doctor_id: 'mock-doctor',
-        patient_id: 'mock-patient',
-        patient_name: 'Paciente Mock',
-        patient_context: 'Contexto mock da consulta',
-        consultation_type: 'PRESENCIAL',
-        status: 'CREATED',
-        duration: null,
-        recording_url: null,
-        notes: null,
-        diagnosis: null,
-        treatment: null,
-        prescription: null,
-        next_appointment: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-      
-      const res = NextResponse.json({ 
-        consultation: mockConsultation, 
-        success: true, 
-        source: 'mock',
-        message: 'Modo mock - Usuário não autenticado'
-      })
-      res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
-      return res
+      console.error('❌ API - Usuário não autenticado')
+      return NextResponse.json({ 
+        error: 'Usuário não autenticado',
+        message: 'Faça login para acessar esta consulta'
+      }, { status: 401 })
     }
 
     console.log('🔄 API - Buscando consulta no Supabase...')
@@ -184,34 +138,11 @@ export async function GET(request: Request) {
     }
 
     if (!consultation) {
-      console.warn('⚠️ API - Consulta não encontrada, retornando mock')
-      const mockConsultation = {
-        id: id,
-        doctor_id: doctorId,
-        patient_id: 'mock-patient',
-        patient_name: 'Paciente Mock',
-        patient_context: 'Contexto mock da consulta',
-        consultation_type: 'PRESENCIAL',
-        status: 'CREATED',
-        duration: null,
-        recording_url: null,
-        notes: null,
-        diagnosis: null,
-        treatment: null,
-        prescription: null,
-        next_appointment: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-      
-      const res = NextResponse.json({ 
-        consultation: mockConsultation, 
-        success: true, 
-        source: 'mock',
-        message: 'Modo mock - Consulta não encontrada no banco'
-      })
-      res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
-      return res
+      console.warn('⚠️ API - Consulta não encontrada no banco')
+      return NextResponse.json({ 
+        error: 'Consulta não encontrada',
+        message: 'Esta consulta não existe ou você não tem permissão para acessá-la'
+      }, { status: 404 })
     }
 
     console.log('✅ API - Consulta encontrada:', consultation.id)

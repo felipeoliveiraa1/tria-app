@@ -99,16 +99,30 @@ export default function RecordingPage() {
               })
             }
           } else {
-            console.log('Falha ao carregar consulta, usando fallback', response.status)
-            // Fallback para dados mockados se a API não estiver disponível
-            setConsultation({
-              id: consultationId,
-              patient_name: "Paciente",
-              patient_context: "",
-              consultation_type: "PRESENCIAL",
-              status: "CREATED",
-              created_at: new Date().toISOString()
-            })
+            const errorData = await response.json().catch(() => ({}))
+            console.error('❌ Falha ao carregar consulta:', response.status, errorData)
+            
+            if (response.status === 401) {
+              console.error('❌ Usuário não autenticado')
+              // Redirecionar para login ou mostrar erro de autenticação
+              router.push('/login')
+              return
+            } else if (response.status === 404) {
+              console.error('❌ Consulta não encontrada')
+              // Mostrar erro específico para consulta não encontrada
+              setConsultation(null)
+            } else {
+              console.error('❌ Erro do servidor:', response.status)
+              // Para outros erros, usar fallback temporário
+              setConsultation({
+                id: consultationId,
+                patient_name: "Paciente",
+                patient_context: "",
+                consultation_type: "PRESENCIAL",
+                status: "CREATED",
+                created_at: new Date().toISOString()
+              })
+            }
           }
         } catch (fetchError) {
           clearTimeout(timeoutId)
