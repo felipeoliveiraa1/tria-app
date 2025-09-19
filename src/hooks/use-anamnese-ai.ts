@@ -51,7 +51,7 @@ export function useAnamneseAi({
       setLastDeltas(response.deltas);
       onStateChange?.(response.state);
       
-      console.log('Anamnese atualizada:', response.deltas);
+      // Anamnese atualizada
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       console.error('Erro ao processar anamnese:', errorMessage);
@@ -63,7 +63,7 @@ export function useAnamneseAi({
 
   // Adicionar texto ao buffer e processar quando necessário
   const addTranscriptChunk = useCallback((chunk: string, forceProcess = false) => {
-    console.log('📝 Anamnese IA - recebendo chunk:', chunk, 'forceProcess:', forceProcess);
+    // Anamnese IA - recebendo chunk
     transcriptBuffer.current += ' ' + chunk;
     
     // Limpar timer anterior

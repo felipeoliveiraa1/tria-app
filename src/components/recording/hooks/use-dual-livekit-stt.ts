@@ -716,21 +716,21 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
 
         if (response.ok) {
           const result = await response.json()
-          console.log(`✅ Transcrição ${speaker} recebida:`, result)
+          // Transcrição recebida
           
           // Verificar se a resposta é válida
           if (!result.success) {
-            console.log(`❌ Resposta com erro para ${speaker}:`, result.error)
+            // Resposta com erro
             return
           }
           
           if (result.mock) {
-            console.log(`🚫 Resposta mock ignorada para ${speaker}:`, result.text)
+            // Resposta mock ignorada
             return
           }
           
           if (result.filtered) {
-            console.log(`🚫 Resposta filtrada ignorada para ${speaker}`)
+            // Resposta filtrada ignorada
             return
           }
           
@@ -739,39 +739,39 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
             
             // Filtrar transcrições genéricas e de baixa qualidade
             if (isGenericTranscription(result.text)) {
-              console.log(`🚫 Transcrição genérica filtrada para ${speaker}: "${result.text}"`)
+              // Transcrição genérica filtrada
               return
             }
             
             // Verificar confiança mínima
             const confidence = result.confidence || 0.9
             if (confidence < 0.7) {
-              console.log(`🚫 Transcrição com baixa confiança filtrada para ${speaker}: ${confidence} - "${result.text}"`)
+              // Transcrição com baixa confiança filtrada
               return
             }
             
             // Verificar se o texto tem contexto médico real
             if (!hasMedicalContext(result.text)) {
-              console.log(`🚫 Transcrição sem contexto médico filtrada para ${speaker}: "${result.text}"`)
+              // Transcrição sem contexto médico filtrada
               return
             }
             
             // Verificar se é duplicata ou muito similar à última transcrição
             const lastText = lastTranscriptionRef.current[speaker]
             if (lastText && isSimilarTranscription(result.text, lastText)) {
-              console.log(`🚫 Transcrição similar/duplicada filtrada para ${speaker}: "${result.text}"`)
+              // Transcrição similar/duplicada filtrada
               return
             }
             
             // Verificar se já processamos esta transcrição exata
             const transcriptionKey = `${speaker}:${result.text}:${Date.now()}`
             if (processedTranscriptionsRef.current.has(result.text)) {
-              console.log(`🚫 Transcrição duplicada ignorada para ${speaker}: "${result.text}"`)
+              // Transcrição duplicada ignorada
               return
             }
             
             // ✅ Transcrição aceita - adicionar ao store
-            console.log(`✅ Transcrição aceita para ${speaker}: "${result.text}"`)
+            // Transcrição aceita
             
             // Adicionar ao conjunto de transcrições processadas
             processedTranscriptionsRef.current.add(result.text)
@@ -1174,14 +1174,14 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
             
             // Filtrar textos repetitivos e automáticos
             if (isRepetitiveText(data.text)) {
-              console.log('🚫 Texto repetitivo filtrado via SSE (debug):', data.text)
+              // Texto repetitivo filtrado
               return
             }
             
             // Verificar se é muito similar à última transcrição
             const lastSpeakerText = lastTranscriptionRef.current[data.speaker as 'doctor' | 'patient']
             if (lastSpeakerText && isSimilarTranscription(data.text, lastSpeakerText)) {
-              console.log('🚫 Texto similar filtrado via SSE (debug):', data.text)
+              // Texto similar filtrado
               return
             }
             

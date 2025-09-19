@@ -185,21 +185,20 @@ export default function RecordingPage() {
 
   // Enviar segmentos finais para anamnese IA
   useEffect(() => {
-    console.log('useEffect anamnese - finalSegments mudaram:', finalSegments.length)
+    // finalSegments mudaram
     if (anamneseCallbackRef.current && finalSegments.length > 0) {
       const lastSegment = finalSegments[finalSegments.length - 1]
-      console.log('Último segmento:', lastSegment?.text, 'ID:', lastSegment?.id)
-      console.log('Último processado:', lastProcessedSegmentId.current)
+      // Verificar último segmento
       
       if (lastSegment && lastSegment.text && lastSegment.id !== lastProcessedSegmentId.current) {
-        console.log('✅ Enviando novo segmento para anamnese IA:', lastSegment.text)
+        // Enviando novo segmento para anamnese IA
         lastProcessedSegmentId.current = lastSegment.id
         anamneseCallbackRef.current(lastSegment.text)
       } else {
-        console.log('❌ Segmento não enviado - já processado ou sem texto')
+        // Segmento não enviado - já processado ou sem texto
       }
     } else {
-      console.log('❌ Callback não registrado ou sem segmentos')
+      // Callback não registrado ou sem segmentos
     }
   }, [finalSegments])
 

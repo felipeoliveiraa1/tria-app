@@ -46,7 +46,7 @@ export function AnamneseAIPanel({
     consultationId,
     initialState: initialAnamnese,
     onStateChange: (newState) => {
-      console.log('Estado da anamnese atualizado:', newState);
+      // Estado da anamnese atualizado
     },
     onError: (error) => {
       console.error('Erro na anamnese IA:', error);
