@@ -275,17 +275,18 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
       /obrigada\. obrigada/i,
       /obrigado obrigado/i,
       /obrigada obrigada/i,
-      /ok/i,
-      /okay/i,
-      /tá/i,
-      /certo/i,
-      /uhum/i,
-      /sim/i,
-      /não/i,
-      /ah/i,
-      /eh/i,
-      /hmm/i,
-      /uh/i,
+      // Remover filtros muito genéricos que podem ser válidos em contexto médico
+      // /ok/i,
+      // /okay/i,
+      // /tá/i,
+      // /certo/i,
+      // /uhum/i,
+      // /sim/i,
+      // /não/i,
+      // /ah/i,
+      // /eh/i,
+      // /hmm/i,
+      // /uh/i,
       /para a verdade/i,
       /a verdade é que você/i,
       /está com um leve delayzinho/i,
@@ -739,7 +740,7 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
       })
 
       // Filtrar chunks muito pequenos que podem ser ruído
-      if (audioBlob.size < 50000) { // Menos de 50KB (muito mais restritivo)
+      if (audioBlob.size < 30000) { // Menos de 30KB (ajustado)
         console.log(`⏩ PULANDO CHUNK ${speaker} - muito pequeno (${audioBlob.size} bytes)`)
         return
       }
@@ -777,21 +778,22 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
           peakCount
         })
         
-        // Filtros mais rigorosos
-        if (averageVolume < 0.05) { // Volume médio muito baixo
+        // Filtros ajustados (menos restritivos)
+        if (averageVolume < 0.02) { // Volume médio baixo (ajustado)
           console.log(`🔇 PULANDO CHUNK ${speaker} - volume médio muito baixo (${averageVolume.toFixed(4)})`)
           return
         }
         
-        if (maxVolume < 0.2) { // Pico máximo muito baixo
+        if (maxVolume < 0.1) { // Pico máximo baixo (ajustado)
           console.log(`🔇 PULANDO CHUNK ${speaker} - pico máximo muito baixo (${maxVolume.toFixed(4)})`)
           return
         }
         
-        if (peakRatio < 0.01) { // Poucos picos (ruído constante)
-          console.log(`🔇 PULANDO CHUNK ${speaker} - poucos picos de volume (${peakRatio.toFixed(4)})`)
-          return
-        }
+        // Remover filtro de picos por enquanto (muito restritivo)
+        // if (peakRatio < 0.01) {
+        //   console.log(`🔇 PULANDO CHUNK ${speaker} - poucos picos de volume (${peakRatio.toFixed(4)})`)
+        //   return
+        // }
         
         await audioContext.close()
       } catch (error) {
