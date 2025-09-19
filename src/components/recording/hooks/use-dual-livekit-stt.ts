@@ -1141,7 +1141,7 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
       })
 
       // Conectar à sala
-      const livekitUrl = config.livekitUrl || process.env.NEXT_PUBLIC_LIVEKIT_URL || 'wss://localhost:7880'
+      const livekitUrl = config.livekitUrl || process.env.NEXT_PUBLIC_LIVEKIT_URL || 'wss://medtutor-5b3jl6hp.livekit.cloud'
       await room.connect(livekitUrl, token)
 
       // 3. Conectar ao stream de transcrições em tempo real

@@ -27,8 +27,14 @@ export async function POST(request: NextRequest) {
     const apiKey = process.env.LIVEKIT_API_KEY
     const apiSecret = process.env.LIVEKIT_API_SECRET
     
+    console.log('🔍 Verificando variáveis LiveKit:')
+    console.log('🔍 LIVEKIT_API_KEY:', apiKey ? '✅ Configurada' : '❌ Não configurada')
+    console.log('🔍 LIVEKIT_API_SECRET:', apiSecret ? '✅ Configurada' : '❌ Não configurada')
+    
     if (!apiKey || !apiSecret) {
       console.warn('⚠️ Chaves LiveKit não configuradas, usando modo mock')
+      console.warn('⚠️ LIVEKIT_API_KEY:', apiKey)
+      console.warn('⚠️ LIVEKIT_API_SECRET:', apiSecret ? '***' : 'undefined')
       return NextResponse.json({
         token: 'mock-token-for-development',
         mock: true,
