@@ -30,6 +30,9 @@ export async function POST(request: NextRequest) {
     console.log('🔍 Verificando variáveis LiveKit:')
     console.log('🔍 LIVEKIT_API_KEY:', apiKey ? '✅ Configurada' : '❌ Não configurada')
     console.log('🔍 LIVEKIT_API_SECRET:', apiSecret ? '✅ Configurada' : '❌ Não configurada')
+    console.log('🔍 LIVEKIT_API_KEY valor:', apiKey)
+    console.log('🔍 LIVEKIT_API_SECRET valor:', apiSecret ? '***' + apiSecret.slice(-4) : 'undefined')
+    console.log('🔍 Todas as variáveis de ambiente:', Object.keys(process.env).filter(key => key.includes('LIVEKIT')))
     
     if (!apiKey || !apiSecret) {
       console.warn('⚠️ Chaves LiveKit não configuradas, usando modo mock')
