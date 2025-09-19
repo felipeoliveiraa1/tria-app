@@ -126,7 +126,7 @@ export default function RecordingPage() {
           }
         } catch (fetchError) {
           clearTimeout(timeoutId)
-          if (fetchError.name === 'AbortError') {
+          if (fetchError instanceof Error && fetchError.name === 'AbortError') {
             console.warn('Timeout ao carregar consulta, usando fallback')
           } else {
             console.error('Erro na requisição:', fetchError)
