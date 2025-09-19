@@ -62,22 +62,45 @@ export default function RecordingPage() {
       try {
         console.log('Carregando dados da consulta:', consultationId)
         
-        // Buscar dados reais da API
+        // Buscar dados reais da API com timeout
         const { supabase } = await import('@/lib/supabase')
         const { data } = await supabase.auth.getSession()
         const token = data.session?.access_token
         const headers: Record<string, string> = { 'cache-control': 'no-store' }
         if (token) headers['Authorization'] = `Bearer ${token}`
-        const response = await fetch(`/api/consultations/${consultationId}`, { headers })
-        if (response.ok) {
-          const data = await response.json()
-          console.log('Dados da consulta carregados:', data)
+        
+        // Criar AbortController para timeout
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 8000) // 8s timeout
+        
+        try {
+          const response = await fetch(`/api/consultations/${consultationId}`, { 
+            headers,
+            signal: controller.signal
+          })
+          clearTimeout(timeoutId)
           
-          if (data.consultation) {
-            setConsultation(data.consultation)
-            console.log('Nome do paciente carregado:', data.consultation.patient_name)
+          if (response.ok) {
+            const data = await response.json()
+            console.log('Dados da consulta carregados:', data)
+            
+            if (data.consultation) {
+              setConsultation(data.consultation)
+              console.log('Nome do paciente carregado:', data.consultation.patient_name)
+            } else {
+              console.log('Consulta não encontrada, usando fallback')
+              setConsultation({
+                id: consultationId,
+                patient_name: "Paciente",
+                patient_context: "",
+                consultation_type: "PRESENCIAL",
+                status: "CREATED",
+                created_at: new Date().toISOString()
+              })
+            }
           } else {
-            console.log('Consulta não encontrada, usando fallback')
+            console.log('Falha ao carregar consulta, usando fallback', response.status)
+            // Fallback para dados mockados se a API não estiver disponível
             setConsultation({
               id: consultationId,
               patient_name: "Paciente",
@@ -87,9 +110,14 @@ export default function RecordingPage() {
               created_at: new Date().toISOString()
             })
           }
-        } else {
-          console.log('Falha ao carregar consulta, usando fallback', response.status)
-          // Fallback para dados mockados se a API não estiver disponível
+        } catch (fetchError) {
+          clearTimeout(timeoutId)
+          if (fetchError.name === 'AbortError') {
+            console.warn('Timeout ao carregar consulta, usando fallback')
+          } else {
+            console.error('Erro na requisição:', fetchError)
+          }
+          // Fallback para dados mockados
           setConsultation({
             id: consultationId,
             patient_name: "Paciente",
@@ -119,7 +147,27 @@ export default function RecordingPage() {
     loadConsultation()
   }, [consultationId])
 
+  // Timeout de segurança para garantir que sempre saia do loading
+  useEffect(() => {
+    if (isLoading) {
+      const safetyTimeout = setTimeout(() => {
+        console.warn('⚠️ Timeout de segurança - forçando saída do loading')
+        setIsLoading(false)
+        if (!consultation) {
+          setConsultation({
+            id: consultationId,
+            patient_name: "Paciente",
+            patient_context: "",
+            consultation_type: "PRESENCIAL",
+            status: "CREATED",
+            created_at: new Date().toISOString()
+          })
+        }
+      }, 10000) // 10 segundos de timeout
 
+      return () => clearTimeout(safetyTimeout)
+    }
+  }, [isLoading, consultation, consultationId])
 
   // Enviar segmentos finais para anamnese IA
   useEffect(() => {
