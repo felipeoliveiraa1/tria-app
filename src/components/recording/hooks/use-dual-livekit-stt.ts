@@ -713,7 +713,17 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
       processingRef.current[speaker] = true
       lastActivityRef.current = Date.now() // Atualizar atividade
       
-      // Enviando chunk para transcrição
+      console.log(`🎤 ENVIANDO CHUNK PARA TRANSCRIÇÃO (${speaker}):`, {
+        size: audioBlob.size,
+        type: audioBlob.type,
+        duration: audioBlob.size / 16000 // Estimativa de duração
+      })
+
+      // Filtrar chunks muito pequenos que podem ser ruído
+      if (audioBlob.size < 10000) { // Menos de 10KB
+        console.log(`⏩ PULANDO CHUNK ${speaker} - muito pequeno (${audioBlob.size} bytes)`)
+        return
+      }
 
       // Detectar se o microfone está ativo (opcional - para debug)
       // const audioContext = new AudioContext()
@@ -754,7 +764,13 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
 
         if (response.ok) {
           const result = await response.json()
-          // Transcrição recebida
+          console.log(`📡 RESPOSTA DA API OPENAI (${speaker}):`, {
+            text: result.text,
+            success: result.success,
+            mock: result.mock,
+            filtered: result.filtered,
+            confidence: result.confidence
+          })
           
           // Verificar se a resposta é válida
           if (!result.success) {
@@ -777,13 +793,13 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
             
             // Filtro ULTRA agressivo para bloquear conteúdo de vídeo
             if (isVideoContent(result.text)) {
-              // Conteúdo de vídeo bloqueado
+              console.log('🚫 CONTEÚDO DE VÍDEO BLOQUEADO:', result.text)
               return
             }
             
             // Filtrar transcrições genéricas e de baixa qualidade
             if (isGenericTranscription(result.text)) {
-              // Transcrição genérica filtrada
+              console.log('🚫 TRANSCRIÇÃO GENÉRICA FILTRADA:', result.text)
               return
             }
             
@@ -796,7 +812,7 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
             
             // Verificar se o texto tem contexto médico real
             if (!hasMedicalContext(result.text)) {
-              // Transcrição sem contexto médico filtrada
+              console.log('🚫 SEM CONTEXTO MÉDICO FILTRADA:', result.text)
               return
             }
             
