@@ -247,6 +247,15 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
       /questões exigentes do oxigênio/i,
       /alguma sensação sobre o oxigênio/i,
       /harry de outro vez/i,
+      
+      // Padrões de legendas e transcrições automáticas
+      /legendas pela comunidade/i,
+      /amara\.org/i,
+      /legendas automáticas/i,
+      /transcrição automática/i,
+      /legendas geradas automaticamente/i,
+      /subtitle/i,
+      /caption/i,
       /a gente vai editar na informação/i,
       /pra gente enxugar melhor/i,
       /como você está/i,
@@ -666,11 +675,7 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
       processingRef.current[speaker] = true
       lastActivityRef.current = Date.now() // Atualizar atividade
       
-      console.log(`🔄 Enviando chunk ${speaker} para transcrição:`, { 
-        size: audioBlob.size, 
-        speaker,
-        consultationId: config.consultationId 
-      })
+      // Enviando chunk para transcrição
 
       // Detectar se o microfone está ativo (opcional - para debug)
       // const audioContext = new AudioContext()
@@ -699,7 +704,7 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
       timeoutRef.current = timeoutId
 
       try {
-        console.log(`🔄 Enviando requisição de transcrição para ${speaker}...`)
+        // Enviando requisição de transcrição
         const response = await fetch('/api/transcribe', {
           method: 'POST',
           body: formData,
@@ -707,7 +712,7 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
         })
 
         clearTimeout(timeoutId)
-        console.log(`📡 Resposta recebida para ${speaker}:`, response.status)
+        // Resposta recebida
 
         if (response.ok) {
           const result = await response.json()
@@ -730,7 +735,7 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
           }
           
           if (result.text && result.text.trim()) {
-            console.log(`📝 Transcrição ${speaker} processada:`, result.text)
+            // Transcrição processada
             
             // Filtrar transcrições genéricas e de baixa qualidade
             if (isGenericTranscription(result.text)) {
@@ -805,7 +810,7 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
               speaker: speaker // Incluir informação do speaker
             })
             
-            console.log(`🏪 Segmento adicionado ao store: ${speaker} - "${result.text}" (confiança: ${confidence})`)
+            // Segmento adicionado ao store
           }
         } else {
           console.error(`❌ Erro na API de transcrição ${speaker}:`, response.status, response.statusText)
@@ -1159,14 +1164,13 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
       }
 
       eventSource.onmessage = (event) => {
-        console.log('📨 Mensagem SSE recebida:', event.data)
+        // Mensagem SSE recebida
         try {
           const data = JSON.parse(event.data)
-          console.log('📨 Dados SSE parseados:', data)
+          // Dados SSE parseados
           
           if (data.type === 'transcription') {
-            console.log('📨 Transcrição recebida via SSE:', data)
-            console.log('🏪 Debug addFinalSegment:', data.text, data.speaker)
+            // Transcrição recebida via SSE
             
             // Filtrar textos repetitivos e automáticos
             if (isRepetitiveText(data.text)) {

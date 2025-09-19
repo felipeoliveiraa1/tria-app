@@ -46,20 +46,10 @@ export async function POST(request: NextRequest) {
       micBinding.set(consultationId, new Map())
     }
 
+    // Configurar mapeamento de microfones (simplificado)
     const clientBindings = micBinding.get(consultationId)?.get(clientId)
-    if (clientBindings) {
-      // Validar se o speaker está correto para este cliente
-      const expectedSpeaker = clientBindings.mic1 === 'doctor' ? 'doctor' : 'patient'
-      if (speaker !== expectedSpeaker) {
-        console.error(`❌ Speaker locking violation: esperado ${expectedSpeaker}, recebido ${speaker}`)
-        return NextResponse.json(
-          { error: `Speaker locking violation: esperado ${expectedSpeaker}` },
-          { status: 400 }
-        )
-      }
-    } else {
+    if (!clientBindings) {
       // Primeira vez - configurar mapeamento
-      console.log(`🔧 Configurando mapeamento de microfones para ${clientId}: ${speaker}`)
       micBinding.get(consultationId)?.set(clientId, {
         mic1: speaker,
         mic2: speaker === 'doctor' ? 'patient' : 'doctor'
