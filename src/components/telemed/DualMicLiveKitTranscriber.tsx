@@ -85,7 +85,8 @@ export default function DualMicLiveKitTranscriber({ consultationId }: Props) {
       }
     } catch (error) {
       console.error('❌ Erro ao testar LiveKit:', error)
-      alert('Erro ao testar LiveKit: ' + error.message)
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+      alert('Erro ao testar LiveKit: ' + errorMessage)
     }
   }
 
