@@ -1192,186 +1192,28 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
       setError(null)
       console.log('🔗 Conectando ao LiveKit com dois microfones...', config)
 
-      // 0. Carregar dispositivos disponíveis
-      await loadDevices()
-
-      // 1. Obter token do LiveKit
-      const tokenResponse = await fetch('/api/livekit/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          consultationId: config.consultationId,
-          participantName: 'dual-mic-system',
-          role: 'doctor'
-        })
-      })
-
-      if (!tokenResponse.ok) {
-        throw new Error('Erro ao obter token LiveKit')
-      }
-
-      const { token, mock } = await tokenResponse.json()
-
-      if (mock) {
-        console.warn('⚠️ Usando token mock - LiveKit não configurado')
-        setError('LiveKit não configurado, usando modo fallback')
-        setIsConnecting(false)
-        return
-      }
-
-      // 2. Conectar à sala LiveKit
-      const room = new Room()
-      roomRef.current = room
-
-      // Configurar eventos da sala com tratamento de erro
-      room.on(RoomEvent.Connected, async () => {
-        console.log('✅ Conectado ao LiveKit')
-        setIsConnected(true)
-        setIsConnecting(false)
-        setRealtimeConnected(true)
-        
-        // Configurar microfones disponíveis
-        console.log('🎤 Configurando microfones...')
-        
-        const streams = []
-        const participants = []
-        
-        // Configurar microfone do médico se disponível
-        if (doctorMic) {
-          console.log('🎤 Configurando microfone do médico...')
-          const doctorStream = await setupMicrophoneRecording(doctorMic, 'doctor')
-          if (doctorStream) {
-            doctorStreamRef.current = doctorStream
-            streams.push(doctorStream)
-            participants.push('doctor')
-            console.log('✅ Microfone do médico configurado')
-          }
-        }
-        
-        // Configurar microfone do paciente se disponível
-        if (patientMic) {
-          console.log('🎤 Configurando microfone do paciente...')
-          const patientStream = await setupMicrophoneRecording(patientMic, 'patient')
-          if (patientStream) {
-            patientStreamRef.current = patientStream
-            streams.push(patientStream)
-            participants.push('patient')
-            console.log('✅ Microfone do paciente configurado')
-          }
-        }
-        
-        // Verificar se pelo menos um microfone foi configurado
-        if (streams.length === 0) {
-          throw new Error('Nenhum microfone pôde ser configurado')
-        }
-        
-        console.log(`✅ ${streams.length} microfone(s) configurado(s): ${participants.join(', ')}`)
-        
-        // Atualizar lista de participantes
-        setParticipants(participants)
-        // Conectar SSE após LiveKit conectado
-        connectSSE()
-      })
-
-      room.on(RoomEvent.Disconnected, (reason) => {
-        console.log('🔌 Desconectado do LiveKit:', reason)
-        setIsConnected(false)
-        setRealtimeConnected(false)
-        setParticipants([])
-        
-        // Se foi desconectado por erro, tentar reconectar
-        if (reason && (reason.toString().includes('DISCONNECTED') || reason.toString().includes('ERROR'))) {
-          console.log('🔄 Tentando reconectar após desconexão...')
-          setTimeout(() => {
-            if (!isConnected) {
-              connect()
-            }
-          }, 3000)
-        }
-      })
-
-      // Conectar à sala
-      const livekitUrl = config.livekitUrl || process.env.NEXT_PUBLIC_LIVEKIT_URL || 'wss://medtutor-5b3jl6hp.livekit.cloud'
-      await room.connect(livekitUrl, token)
-
-      // 3. Conectar ao stream de transcrições em tempo real
-      console.log('🔄 Configurando stream de transcrições...')
+      // Implementar retry automático para contornar problemas de message channel
+      let retryCount = 0
+      const maxRetries = 3
       
-      const eventSource = new EventSource(
-        `/api/transcriptions/stream?consultationId=${config.consultationId}`
-      )
-      eventSourceRef.current = eventSource
-
-      eventSource.onopen = () => {
-        console.log('✅ Conectado ao stream de transcrições')
-        console.log('🔗 SSE URL:', eventSource.url)
-        console.log('🔗 SSE readyState:', eventSource.readyState)
-      }
-
-      eventSource.onmessage = (event) => {
-        // Mensagem SSE recebida
+      while (retryCount < maxRetries) {
         try {
-          const data = JSON.parse(event.data)
-          // Dados SSE parseados
-          
-          if (data.type === 'transcription') {
-            // Transcrição recebida via SSE
-            
-            // Filtrar textos repetitivos e automáticos
-            if (isRepetitiveText(data.text)) {
-              // Texto repetitivo filtrado
-              return
-            }
-            
-            // Verificar se é muito similar à última transcrição
-            const lastSpeakerText = lastTranscriptionRef.current[data.speaker as 'doctor' | 'patient']
-            if (lastSpeakerText && isSimilarTranscription(data.text, lastSpeakerText)) {
-              // Texto similar filtrado
-              return
-            }
-            
-            // Atualizar última transcrição
-            lastTranscriptionRef.current[data.speaker as 'doctor' | 'patient'] = data.text
-            
-            // Atualizar UI em tempo real com informação do speaker
-            addFinalSegment({
-              text: data.text,
-              startMs: data.timestamp - 3000,
-              endMs: data.timestamp,
-              confidence: data.confidence || 0.8,
-              isPartial: false,
-              speaker: data.speaker // Incluir informação do speaker
-            })
-          }
+          await attemptConnection()
+          break // Se chegou aqui, conexão foi bem-sucedida
         } catch (error) {
-          console.warn('⚠️ Erro ao processar mensagem SSE:', error)
+          retryCount++
+          console.warn(`⚠️ Tentativa ${retryCount} falhou:`, error)
+          
+          if (retryCount < maxRetries) {
+            console.log(`🔄 Tentando novamente em 2 segundos... (${retryCount}/${maxRetries})`)
+            await new Promise(resolve => setTimeout(resolve, 2000))
+          } else {
+            throw error // Re-throw se todas as tentativas falharam
+          }
         }
       }
-
-      eventSource.onerror = (error) => {
-        console.error('❌ Erro no stream de transcrições:', error)
-        console.error('❌ SSE readyState:', eventSource.readyState)
-        console.error('❌ SSE url:', eventSource.url)
-        // Tentar reconectar após 5 segundos
-        if (!isReconnectingRef.current) {
-          isReconnectingRef.current = true
-          reconnectTimeoutRef.current = setTimeout(() => {
-            console.log('🔄 Tentando reconectar stream de transcrições...')
-            if (eventSourceRef.current) {
-              eventSourceRef.current.close()
-            }
-            // Reconectar
-            const newEventSource = new EventSource(
-              `/api/transcriptions/stream?consultationId=${config.consultationId}`
-            )
-            eventSourceRef.current = newEventSource
-            isReconnectingRef.current = false
-          }, 5000)
-        }
-      }
-
     } catch (error) {
-      console.error('❌ Erro ao conectar LiveKit:', error)
+      console.error('❌ Erro ao conectar LiveKit após todas as tentativas:', error)
       
       // Tratar erro específico de message channel
       if (error instanceof Error && error.message.includes('message channel closed')) {
@@ -1391,6 +1233,187 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
       setRealtimeConnected(false)
     }
   }, [config, isConnecting, isConnected, doctorMic, patientMic, loadDevices, setupMicrophoneRecording, addFinalSegment, setRealtimeConnected])
+
+  // Função auxiliar para tentar conexão
+  const attemptConnection = useCallback(async () => {
+    // 0. Carregar dispositivos disponíveis
+    await loadDevices()
+
+    // 1. Obter token do LiveKit
+    const tokenResponse = await fetch('/api/livekit/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        consultationId: config.consultationId,
+        participantName: 'dual-mic-system',
+        role: 'doctor'
+      })
+    })
+
+    if (!tokenResponse.ok) {
+      throw new Error('Erro ao obter token LiveKit')
+    }
+
+    const { token, mock } = await tokenResponse.json()
+
+    if (mock) {
+      console.warn('⚠️ Usando token mock - LiveKit não configurado')
+      setError('LiveKit não configurado, usando modo fallback')
+      setIsConnecting(false)
+      return
+    }
+
+    // 2. Conectar à sala LiveKit
+    const room = new Room()
+    roomRef.current = room
+
+    // Configurar eventos da sala com tratamento de erro
+    room.on(RoomEvent.Connected, async () => {
+      console.log('✅ Conectado ao LiveKit')
+      setIsConnected(true)
+      setIsConnecting(false)
+      setRealtimeConnected(true)
+      
+      // Configurar microfones disponíveis
+      console.log('🎤 Configurando microfones...')
+      
+      const streams = []
+      const participants = []
+      
+      // Configurar microfone do médico se disponível
+      if (doctorMic) {
+        console.log('🎤 Configurando microfone do médico...')
+        const doctorStream = await setupMicrophoneRecording(doctorMic, 'doctor')
+        if (doctorStream) {
+          doctorStreamRef.current = doctorStream
+          streams.push(doctorStream)
+          participants.push('doctor')
+          console.log('✅ Microfone do médico configurado')
+        }
+      }
+      
+      // Configurar microfone do paciente se disponível
+      if (patientMic) {
+        console.log('🎤 Configurando microfone do paciente...')
+        const patientStream = await setupMicrophoneRecording(patientMic, 'patient')
+        if (patientStream) {
+          patientStreamRef.current = patientStream
+          streams.push(patientStream)
+          participants.push('patient')
+          console.log('✅ Microfone do paciente configurado')
+        }
+      }
+      
+      // Verificar se pelo menos um microfone foi configurado
+      if (streams.length === 0) {
+        throw new Error('Nenhum microfone pôde ser configurado')
+      }
+      
+      console.log(`✅ ${streams.length} microfone(s) configurado(s): ${participants.join(', ')}`)
+      
+      // Atualizar lista de participantes
+      setParticipants(participants)
+      // Conectar SSE após LiveKit conectado
+      connectSSE()
+    })
+
+    room.on(RoomEvent.Disconnected, (reason) => {
+      console.log('🔌 Desconectado do LiveKit:', reason)
+      setIsConnected(false)
+      setRealtimeConnected(false)
+      setParticipants([])
+      
+      // Se foi desconectado por erro, tentar reconectar
+      if (reason && (reason.toString().includes('DISCONNECTED') || reason.toString().includes('ERROR'))) {
+        console.log('🔄 Tentando reconectar após desconexão...')
+        setTimeout(() => {
+          if (!isConnected) {
+            connect()
+          }
+        }, 3000)
+      }
+    })
+
+    // Conectar à sala
+    const livekitUrl = config.livekitUrl || process.env.NEXT_PUBLIC_LIVEKIT_URL || 'wss://medtutor-5b3jl6hp.livekit.cloud'
+    await room.connect(livekitUrl, token)
+
+    // 3. Conectar ao stream de transcrições em tempo real
+    console.log('🔄 Configurando stream de transcrições...')
+    
+    const eventSource = new EventSource(
+      `/api/transcriptions/stream?consultationId=${config.consultationId}`
+    )
+    eventSourceRef.current = eventSource
+
+    eventSource.onopen = () => {
+      console.log('✅ Conectado ao stream de transcrições')
+      console.log('🔗 SSE URL:', eventSource.url)
+      console.log('🔗 SSE readyState:', eventSource.readyState)
+    }
+
+    eventSource.onmessage = (event) => {
+      // Mensagem SSE recebida
+      try {
+        const data = JSON.parse(event.data)
+        // Dados SSE parseados
+        
+        if (data.type === 'transcription') {
+          // Transcrição recebida via SSE
+          
+          // Filtrar textos repetitivos e automáticos
+          if (isRepetitiveText(data.text)) {
+            // Texto repetitivo filtrado
+            return
+          }
+          
+          // Verificar se é muito similar à última transcrição
+          const lastSpeakerText = lastTranscriptionRef.current[data.speaker as 'doctor' | 'patient']
+          if (lastSpeakerText && isSimilarTranscription(data.text, lastSpeakerText)) {
+            // Texto similar filtrado
+            return
+          }
+          
+          // Atualizar última transcrição
+          lastTranscriptionRef.current[data.speaker as 'doctor' | 'patient'] = data.text
+          
+          // Atualizar UI em tempo real com informação do speaker
+          addFinalSegment({
+            text: data.text,
+            startMs: data.timestamp - 3000,
+            endMs: data.timestamp,
+            confidence: data.confidence || 0.8,
+            isPartial: false,
+            speaker: data.speaker // Incluir informação do speaker
+          })
+        }
+      } catch (error) {
+        console.warn('⚠️ Erro ao processar mensagem SSE:', error)
+      }
+    }
+
+    eventSource.onerror = (error) => {
+      console.error('❌ Erro no stream de transcrições:', error)
+      console.error('❌ SSE readyState:', eventSource.readyState)
+      console.error('❌ SSE url:', eventSource.url)
+      // Tentar reconectar após 5 segundos
+      if (!isReconnectingRef.current) {
+        isReconnectingRef.current = true
+        reconnectTimeoutRef.current = setTimeout(() => {
+          console.log('🔄 Tentando reconectar stream de transcrições...')
+          if (eventSourceRef.current) {
+            eventSourceRef.current.close()
+          }
+          // Reconectar
+          const newEventSource = new EventSource(
+            `/api/transcriptions/stream?consultationId=${config.consultationId}`
+          )
+          eventSourceRef.current = newEventSource
+          isReconnectingRef.current = false
+        }, 5000)
+      }
+    }
+  }, [config, doctorMic, patientMic, loadDevices, setupMicrophoneRecording, addFinalSegment, setRealtimeConnected, connectSSE])
 
   // Desconectar
   const disconnect = useCallback(() => {

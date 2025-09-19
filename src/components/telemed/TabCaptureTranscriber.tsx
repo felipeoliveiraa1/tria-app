@@ -130,9 +130,16 @@ export default function TabCaptureTranscriber({ consultationId, onTranscriptionU
     
     console.log('🎬 Iniciando transcrição em tempo real com Dual LiveKit');
     
+    // Usar Promise.race para implementar timeout e fallback
+    const connectWithTimeout = Promise.race([
+      dualLiveKit.connect(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout na conexão LiveKit')), 10000)
+      )
+    ]);
+
     try {
-      // Conectar ao Dual LiveKit de forma assíncrona
-      await dualLiveKit.connect();
+      await connectWithTimeout;
       setRecording(true);
 
       // Se o usuário parar o compartilhamento da aba, paramos também
@@ -154,10 +161,17 @@ export default function TabCaptureTranscriber({ consultationId, onTranscriptionU
       });
     } catch (error) {
       console.error('❌ Erro ao conectar LiveKit:', error);
+      
+      // Se falhar, tentar novamente após um delay
+      console.log('🔄 Tentando reconectar em 3 segundos...');
+      setTimeout(() => {
+        console.log('🔄 Segunda tentativa de conexão...');
+        start();
+      }, 3000);
+      
       toast({
-        title: "Erro de conexão",
-        description: "Não foi possível conectar ao LiveKit. Tente novamente.",
-        variant: "destructive"
+        title: "Tentando conectar...",
+        description: "Conexão em andamento. Aguarde...",
       });
     }
   }
