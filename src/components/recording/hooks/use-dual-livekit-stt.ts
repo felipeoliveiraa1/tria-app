@@ -271,6 +271,21 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
       /obrigada/i,
       /obrigado\./i,
       /obrigada\./i,
+      /obrigado\. obrigado/i,
+      /obrigada\. obrigada/i,
+      /obrigado obrigado/i,
+      /obrigada obrigada/i,
+      /ok/i,
+      /okay/i,
+      /tá/i,
+      /certo/i,
+      /uhum/i,
+      /sim/i,
+      /não/i,
+      /ah/i,
+      /eh/i,
+      /hmm/i,
+      /uh/i,
       /para a verdade/i,
       /a verdade é que você/i,
       /está com um leve delayzinho/i,
@@ -724,7 +739,7 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
       })
 
       // Filtrar chunks muito pequenos que podem ser ruído
-      if (audioBlob.size < 20000) { // Menos de 20KB (aumentado)
+      if (audioBlob.size < 50000) { // Menos de 50KB (muito mais restritivo)
         console.log(`⏩ PULANDO CHUNK ${speaker} - muito pequeno (${audioBlob.size} bytes)`)
         return
       }
@@ -735,19 +750,46 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
         const audioContext = new AudioContext()
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
         
-        // Calcular volume médio do áudio
+        // Calcular volume médio e detectar picos (fala real)
         const channelData = audioBuffer.getChannelData(0)
         let sum = 0
+        let maxVolume = 0
+        let peakCount = 0
+        
         for (let i = 0; i < channelData.length; i++) {
-          sum += Math.abs(channelData[i])
+          const absValue = Math.abs(channelData[i])
+          sum += absValue
+          maxVolume = Math.max(maxVolume, absValue)
+          
+          // Contar picos de volume (indicam fala)
+          if (absValue > 0.1) {
+            peakCount++
+          }
         }
+        
         const averageVolume = sum / channelData.length
+        const peakRatio = peakCount / channelData.length
         
-        console.log(`🔊 VOLUME DETECTADO (${speaker}):`, averageVolume)
+        console.log(`🔊 ANÁLISE DE ÁUDIO (${speaker}):`, {
+          averageVolume: averageVolume.toFixed(4),
+          maxVolume: maxVolume.toFixed(4),
+          peakRatio: peakRatio.toFixed(4),
+          peakCount
+        })
         
-        // Se o volume for muito baixo, é provavelmente silêncio
-        if (averageVolume < 0.01) { // Threshold de volume
-          console.log(`🔇 PULANDO CHUNK ${speaker} - volume muito baixo (${averageVolume})`)
+        // Filtros mais rigorosos
+        if (averageVolume < 0.05) { // Volume médio muito baixo
+          console.log(`🔇 PULANDO CHUNK ${speaker} - volume médio muito baixo (${averageVolume.toFixed(4)})`)
+          return
+        }
+        
+        if (maxVolume < 0.2) { // Pico máximo muito baixo
+          console.log(`🔇 PULANDO CHUNK ${speaker} - pico máximo muito baixo (${maxVolume.toFixed(4)})`)
+          return
+        }
+        
+        if (peakRatio < 0.01) { // Poucos picos (ruído constante)
+          console.log(`🔇 PULANDO CHUNK ${speaker} - poucos picos de volume (${peakRatio.toFixed(4)})`)
           return
         }
         
