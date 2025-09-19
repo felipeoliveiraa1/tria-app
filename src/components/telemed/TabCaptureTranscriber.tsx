@@ -107,7 +107,7 @@ export default function TabCaptureTranscriber({ consultationId, onTranscriptionU
     }
   }
 
-  function start() {
+  async function start() {
     if (!stream) {
       toast({
         title: "Selecione uma aba primeiro",
@@ -130,27 +130,36 @@ export default function TabCaptureTranscriber({ consultationId, onTranscriptionU
     
     console.log('🎬 Iniciando transcrição em tempo real com Dual LiveKit');
     
-    // Conectar ao Dual LiveKit
-    dualLiveKit.connect();
-    setRecording(true);
+    try {
+      // Conectar ao Dual LiveKit de forma assíncrona
+      await dualLiveKit.connect();
+      setRecording(true);
 
-    // Se o usuário parar o compartilhamento da aba, paramos também
-    stream.getAudioTracks().forEach((track: MediaStreamTrack) => {
-      track.onended = () => {
-        console.log('🔌 Compartilhamento de aba encerrado');
-        stop();
-        toast({
-          title: "Compartilhamento encerrado",
-          description: "O compartilhamento da aba foi interrompido.",
-          variant: "destructive"
-        });
-      };
-    });
+      // Se o usuário parar o compartilhamento da aba, paramos também
+      stream.getAudioTracks().forEach((track: MediaStreamTrack) => {
+        track.onended = () => {
+          console.log('🔌 Compartilhamento de aba encerrado');
+          stop();
+          toast({
+            title: "Compartilhamento encerrado",
+            description: "O compartilhamento da aba foi interrompido.",
+            variant: "destructive"
+          });
+        };
+      });
 
-    toast({
-      title: "Transcrição iniciada!",
-      description: "LiveKit ativado para transcrição em tempo real.",
-    });
+      toast({
+        title: "Transcrição iniciada!",
+        description: "LiveKit ativado para transcrição em tempo real.",
+      });
+    } catch (error) {
+      console.error('❌ Erro ao conectar LiveKit:', error);
+      toast({
+        title: "Erro de conexão",
+        description: "Não foi possível conectar ao LiveKit. Tente novamente.",
+        variant: "destructive"
+      });
+    }
   }
 
   function stop() {

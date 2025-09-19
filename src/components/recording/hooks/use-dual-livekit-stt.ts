@@ -1223,7 +1223,7 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
       const room = new Room()
       roomRef.current = room
 
-      // Configurar eventos da sala
+      // Configurar eventos da sala com tratamento de erro
       room.on(RoomEvent.Connected, async () => {
         console.log('✅ Conectado ao LiveKit')
         setIsConnected(true)
@@ -1273,11 +1273,21 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
         connectSSE()
       })
 
-      room.on(RoomEvent.Disconnected, () => {
-        console.log('🔌 Desconectado do LiveKit')
+      room.on(RoomEvent.Disconnected, (reason) => {
+        console.log('🔌 Desconectado do LiveKit:', reason)
         setIsConnected(false)
         setRealtimeConnected(false)
         setParticipants([])
+        
+        // Se foi desconectado por erro, tentar reconectar
+        if (reason && (reason.toString().includes('DISCONNECTED') || reason.toString().includes('ERROR'))) {
+          console.log('🔄 Tentando reconectar após desconexão...')
+          setTimeout(() => {
+            if (!isConnected) {
+              connect()
+            }
+          }, 3000)
+        }
       })
 
       // Conectar à sala
@@ -1362,6 +1372,20 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
 
     } catch (error) {
       console.error('❌ Erro ao conectar LiveKit:', error)
+      
+      // Tratar erro específico de message channel
+      if (error instanceof Error && error.message.includes('message channel closed')) {
+        console.warn('⚠️ Erro de message channel detectado, tentando reconectar...')
+        setError('Erro de comunicação. Tentando reconectar...')
+        
+        // Tentar reconectar após um pequeno delay
+        setTimeout(() => {
+          console.log('🔄 Tentando reconectar após erro de message channel...')
+          connect()
+        }, 2000)
+        return
+      }
+      
       setError(error instanceof Error ? error.message : 'Erro desconhecido')
       setIsConnecting(false)
       setRealtimeConnected(false)
