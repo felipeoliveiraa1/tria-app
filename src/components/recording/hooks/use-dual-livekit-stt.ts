@@ -267,6 +267,10 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
       /cade ação/i,
       /é isso aí/i,
       /muito obrigado/i,
+      /obrigado/i,
+      /obrigada/i,
+      /obrigado\./i,
+      /obrigada\./i,
       /para a verdade/i,
       /a verdade é que você/i,
       /está com um leve delayzinho/i,
@@ -720,9 +724,36 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
       })
 
       // Filtrar chunks muito pequenos que podem ser ruído
-      if (audioBlob.size < 10000) { // Menos de 10KB
+      if (audioBlob.size < 20000) { // Menos de 20KB (aumentado)
         console.log(`⏩ PULANDO CHUNK ${speaker} - muito pequeno (${audioBlob.size} bytes)`)
         return
+      }
+
+      // Detectar se o áudio tem volume suficiente (não é silêncio)
+      try {
+        const arrayBuffer = await audioBlob.arrayBuffer()
+        const audioContext = new AudioContext()
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+        
+        // Calcular volume médio do áudio
+        const channelData = audioBuffer.getChannelData(0)
+        let sum = 0
+        for (let i = 0; i < channelData.length; i++) {
+          sum += Math.abs(channelData[i])
+        }
+        const averageVolume = sum / channelData.length
+        
+        console.log(`🔊 VOLUME DETECTADO (${speaker}):`, averageVolume)
+        
+        // Se o volume for muito baixo, é provavelmente silêncio
+        if (averageVolume < 0.01) { // Threshold de volume
+          console.log(`🔇 PULANDO CHUNK ${speaker} - volume muito baixo (${averageVolume})`)
+          return
+        }
+        
+        await audioContext.close()
+      } catch (error) {
+        console.warn('Erro ao analisar volume do áudio:', error)
       }
 
       // Detectar se o microfone está ativo (opcional - para debug)
