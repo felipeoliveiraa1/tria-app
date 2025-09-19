@@ -81,8 +81,33 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
     return isActive
   }, [])
 
+  // Função específica para bloquear conteúdo de vídeo/legendas
+  const isVideoContent = useCallback((text: string) => {
+    const videoPatterns = [
+      /amara/i,
+      /comunidade/i,
+      /legendas/i,
+      /\.org/i,
+      /subtitle/i,
+      /caption/i,
+      /transcrição automática/i,
+      /legendas automáticas/i,
+      /legendas geradas/i,
+      /legendas pela/i,
+      /legendas pela comunidade/i,
+      /amara\.org/i,
+    ]
+    
+    return videoPatterns.some(pattern => pattern.test(text))
+  }, [])
+
   // Verificar se o texto tem contexto médico real
   const hasMedicalContext = useCallback((text: string) => {
+    // Primeiro, verificar se contém conteúdo de vídeo/legendas
+    if (isVideoContent(text)) {
+      return false // Bloquear completamente
+    }
+    
     const medicalKeywords = [
       // Sintomas comuns
       'dor', 'dores', 'dolorido', 'dolorida',
@@ -221,6 +246,10 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
 
   // Filtrar transcrições genéricas e de baixa qualidade
   const isGenericTranscription = useCallback((text: string) => {
+    // Filtro agressivo para legendas e conteúdo de vídeo
+    if (isVideoContent(text)) {
+      return true
+    }
     const genericPatterns = [
       // Padrões genéricos de consulta médica
       /o paciente está falando com o médico/i,
@@ -256,6 +285,10 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
       /legendas geradas automaticamente/i,
       /subtitle/i,
       /caption/i,
+      /legendas/i,
+      /comunidade/i,
+      /amara/i,
+      /\.org/i,
       /a gente vai editar na informação/i,
       /pra gente enxugar melhor/i,
       /como você está/i,
@@ -575,6 +608,11 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
 
   // Função para detectar textos repetitivos ou automáticos
   const isRepetitiveText = useCallback((text: string): boolean => {
+    // Primeiro, verificar se contém conteúdo de vídeo/legendas
+    if (isVideoContent(text)) {
+      return true
+    }
+    
     const cleanText = text.toLowerCase().trim()
     
     // Padrões de texto repetitivo
@@ -736,6 +774,12 @@ export function useDualLivekitSTT(config: DualLiveKitSTTConfig) {
           
           if (result.text && result.text.trim()) {
             // Transcrição processada
+            
+            // Filtro ULTRA agressivo para bloquear conteúdo de vídeo
+            if (isVideoContent(result.text)) {
+              // Conteúdo de vídeo bloqueado
+              return
+            }
             
             // Filtrar transcrições genéricas e de baixa qualidade
             if (isGenericTranscription(result.text)) {
